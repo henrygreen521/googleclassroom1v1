@@ -302,39 +302,6 @@
                 </button>
             </div>
 
-            <!-- MULTIPLAYER LOBBY SETUP -->
-            <div id="panel-multi" class="w-full hidden flex flex-col items-center">
-                <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500 text-center font-bold" />
-                
-                <div id="multi-actions" class="grid grid-cols-2 gap-2 w-full mb-4">
-                    <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">Create Room</button>
-                    <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs">Join Room</button>
-                </div>
-
-                <div id="join-box" class="w-full hidden mb-4">
-                    <div class="flex gap-2">
-                        <input id="input-room-code" type="text" placeholder="4-Digit Code" maxlength="4" class="w-2/3 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center pixel-font uppercase focus:outline-none focus:border-emerald-500" />
-                        <button id="btn-join-room" class="w-1/3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs">JOIN</button>
-                    </div>
-                </div>
-
-                <!-- LOBBY ROOM CONTAINER -->
-                <div id="lobby-container" class="w-full hidden bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-left">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-bold text-slate-400">ROOM CODE:</span>
-                        <span id="display-room-code" class="pixel-font text-lg text-yellow-400 bg-slate-900 px-3 py-1 rounded-xl border border-yellow-500/50">----</span>
-                    </div>
-
-                    <p class="text-[11px] font-bold text-slate-400 mb-2 uppercase">Students in Lobby:</p>
-                    <div id="player-list" class="space-y-2 mb-4 max-h-36 overflow-y-auto pr-1"></div>
-
-                    <button id="btn-host-start" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm hidden shadow-lg">
-                        🚀 START MATCH (HOST)
-                    </button>
-                    <p id="waiting-msg" class="text-xs text-yellow-400 font-bold text-center italic hidden">Waiting for host to start the match...</p>
-                </div>
-            </div>
-
             <p class="text-[11px] text-slate-400 mt-4">
                 Explore Classroom 101, Lockers Hallway, Utility Room, and the brand-new massive <b>School Cafeteria</b>!
             </p>
@@ -363,15 +330,8 @@
 
     <!-- Main Game Script -->
     <script>
-        /**
-         * Socket.io Client Setup
-         */
         const socket = io();
         let isMultiplayer = false;
-        let myPlayerId = null;
-        let isHost = false;
-        let peerPlayers = {};
-        let peerMeshes = {};
 
         /**
          * Web Audio Synthesizer Effects
@@ -404,22 +364,6 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
                 osc.connect(gain); gain.connect(this.ctx.destination);
                 osc.start(); osc.stop(this.ctx.currentTime + 0.15);
-            }
-            playFurniturePush() {
-                if (!this.ctx) return;
-                const now = performance.now();
-                if (now - this.lastSlideSound < 110) return;
-                this.lastSlideSound = now;
-
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(110, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
             }
             playDoorSqueak() {
                 if (!this.ctx) return;
@@ -478,22 +422,16 @@
         }
         const soundFX = new SoundFX();
 
-        /**
-         * Global Game Setup & State
-         */
         let scene, camera, renderer;
         let gameState = 'MENU';
         let matchTime = 99;
-        let timerInterval = null;
         let aiDifficulty = 'MEDIUM';
 
-        // Physics Constants
         const GRAVITY = -24.0;
         const JUMP_STRENGTH = 8.5;
         const EYE_HEIGHT = 1.6;
         const PLAYER_RADIUS = 0.45;
 
-        // Player State
         const player = {
             position: new THREE.Vector3(0, EYE_HEIGHT, 4),
             velocity: new THREE.Vector3(),
@@ -503,12 +441,9 @@
             hp: 100,
             maxHp: 100,
             attackCooldown: 0,
-            chalkCooldown: 0,
-            isAttacking: false,
-            bobTimer: 0
+            chalkCooldown: 0
         };
 
-        // AI Fighter State
         const ai = {
             position: new THREE.Vector3(0, 0, -4),
             velocity: new THREE.Vector3(),
@@ -516,35 +451,17 @@
             isGrounded: true,
             hp: 100,
             maxHp: 100,
-            state: 'APPROACH',
-            timer: 0,
             attackCooldown: 0,
-            strafeDir: 1,
-            mesh: null,
-            head: null,
-            rightArm: null,
-            waypointPath: []
+            mesh: null
         };
 
         const keys = {};
-        const mobileState = {
-            lookPointerId: null,
-            lastLookX: 0,
-            lastLookY: 0,
-            isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900
-        };
+        const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0 };
         const pushableFurniture = [];
         const staticObstacles = [];
         const doors = [];
         const particles = [];
         const chalkProjectiles = [];
-
-        // First Person Weapon Rig
-        let fpvWeaponGroup, fpvRulerMesh;
-
-        function setMovementKey(key, isPressed) {
-            keys[key] = isPressed;
-        }
 
         function isMobileLayout() {
             return window.innerWidth < 900 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -553,50 +470,33 @@
         function syncMobileControls() {
             const container = document.getElementById('mobile-controls');
             if (!container) return;
-            const show = isMobileLayout() && gameState === 'PLAYING';
-            container.classList.toggle('show', show);
+            container.classList.toggle('show', isMobileLayout() && gameState === 'PLAYING');
         }
 
         function triggerMobileAction(action) {
             if (gameState !== 'PLAYING') return;
-
-            if (action === 'attack') {
-                if (document.pointerLockElement !== document.body) {
-                    document.body.requestPointerLock();
-                }
-                triggerPlayerAttack();
-            }
-            if (action === 'jump') {
-                if (player.isGrounded) {
-                    player.velocity.y = JUMP_STRENGTH;
-                    player.isGrounded = false;
-                    soundFX.playJump();
-                }
+            if (action === 'attack') triggerPlayerAttack();
+            if (action === 'jump' && player.isGrounded) {
+                player.velocity.y = JUMP_STRENGTH;
+                player.isGrounded = false;
+                soundFX.playJump();
             }
             if (action === 'door') {
                 const nearDoor = checkDoorProximity();
                 if (nearDoor) toggleDoor(nearDoor);
             }
-            if (action === 'chalk') {
-                shootChalk();
-            }
+            if (action === 'chalk') shootChalk();
         }
 
         function bindMobileButtons() {
             document.querySelectorAll('.move-btn').forEach((btn) => {
                 const key = btn.dataset.key;
                 const press = (isPressed) => {
-                    setMovementKey(key, isPressed);
+                    keys[key] = isPressed;
                     btn.classList.toggle('active', isPressed);
                 };
-
-                btn.addEventListener('pointerdown', (e) => {
-                    e.preventDefault();
-                    press(true);
-                });
-                btn.addEventListener('pointerup', () => press(false));
-                btn.addEventListener('pointerleave', () => press(false));
-                btn.addEventListener('pointercancel', () => press(false));
+                btn.addEventListener('pointerdown', (e) => { e.preventDefault(); press(true); });
+                ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, () => press(false)));
             });
 
             document.querySelectorAll('.action-btn').forEach((btn) => {
@@ -606,14 +506,11 @@
                     btn.classList.add('active');
                     triggerMobileAction(action);
                 });
-                btn.addEventListener('pointerup', () => btn.classList.remove('active'));
-                btn.addEventListener('pointerleave', () => btn.classList.remove('active'));
-                btn.addEventListener('pointercancel', () => btn.classList.remove('active'));
+                ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, () => btn.classList.remove('active')));
             });
 
             const lookPad = document.getElementById('mobile-look-pad');
             if (!lookPad) return;
-
             lookPad.addEventListener('pointerdown', (e) => {
                 if (gameState !== 'PLAYING') return;
                 mobileState.lookPointerId = e.pointerId;
@@ -622,69 +519,22 @@
                 lookPad.classList.add('active');
                 lookPad.setPointerCapture(e.pointerId);
             });
-
             lookPad.addEventListener('pointermove', (e) => {
                 if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING') return;
-                const dx = e.clientX - mobileState.lastLookX;
-                const dy = e.clientY - mobileState.lastLookY;
-                player.yaw -= dx * 0.0035;
-                player.pitch -= dy * 0.0035;
+                player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035;
+                player.pitch -= (e.clientY - mobileState.lastLookY) * 0.0035;
                 player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
                 mobileState.lastLookX = e.clientX;
                 mobileState.lastLookY = e.clientY;
             });
-
             const endLook = (e) => {
                 if (mobileState.lookPointerId === e.pointerId) {
                     mobileState.lookPointerId = null;
                     lookPad.classList.remove('active');
                 }
             };
-
-            lookPad.addEventListener('pointerup', endLook);
-            lookPad.addEventListener('pointercancel', endLook);
-            lookPad.addEventListener('pointerleave', endLook);
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => lookPad.addEventListener(ev, endLook));
         }
-
-        /**
-         * Waypoint Graph & Region Pathfinding
-         */
-        const schoolWaypoints = [
-            { id: 'class101_center', pos: new THREE.Vector3(0, 0, 0), region: 'class101' },
-            { id: 'class101_door_inside', pos: new THREE.Vector3(0, 0, 8.5), region: 'class101' },
-            { id: 'hallway_door101', pos: new THREE.Vector3(0, 0, 11.5), region: 'hallway' },
-            { id: 'hallway_mid_west', pos: new THREE.Vector3(-12, 0, 12.5), region: 'hallway' },
-            { id: 'hallway_mid_east', pos: new THREE.Vector3(12, 0, 12.5), region: 'hallway' },
-            { id: 'hallway_doorBreak', pos: new THREE.Vector3(0, 0, 13.5), region: 'hallway' },
-            { id: 'hallway_ext_west', pos: new THREE.Vector3(-22, 0, 12.5), region: 'hallway' },
-            { id: 'hallway_ext_east', pos: new THREE.Vector3(22, 0, 12.5), region: 'hallway' },
-            { id: 'hallway_cafeteria_entrance', pos: new THREE.Vector3(26, 0, 12.5), region: 'hallway' },
-            { id: 'breakroom_door_inside', pos: new THREE.Vector3(0, 0, 17.5), region: 'breakroom' },
-            { id: 'breakroom_center', pos: new THREE.Vector3(0, 0, 22.0), region: 'breakroom' },
-            { id: 'cafeteria_door_inside', pos: new THREE.Vector3(30, 0, 12.5), region: 'cafeteria' },
-            { id: 'cafeteria_center', pos: new THREE.Vector3(42, 0, 12.5), region: 'cafeteria' },
-            { id: 'cafeteria_north', pos: new THREE.Vector3(42, 0, -2), region: 'cafeteria' },
-            { id: 'cafeteria_south', pos: new THREE.Vector3(42, 0, 26), region: 'cafeteria' },
-            { id: 'cafeteria_east', pos: new THREE.Vector3(54, 0, 12.5), region: 'cafeteria' }
-        ];
-
-        const waypointGraph = {
-            'class101_center': ['class101_door_inside'],
-            'class101_door_inside': ['class101_center', 'hallway_door101'],
-            'hallway_door101': ['class101_door_inside', 'hallway_mid_west', 'hallway_mid_east', 'hallway_doorBreak'],
-            'hallway_mid_west': ['hallway_door101'],
-            'hallway_mid_east': ['hallway_door101', 'hallway_ext_east'],
-            'hallway_doorBreak': ['hallway_door101', 'breakroom_door_inside'],
-            'breakroom_door_inside': ['hallway_doorBreak', 'breakroom_center'],
-            'breakroom_center': ['breakroom_door_inside'],
-            'hallway_ext_east': ['hallway_mid_east', 'hallway_cafeteria_entrance'],
-            'hallway_cafeteria_entrance': ['hallway_ext_east', 'cafeteria_door_inside'],
-            'cafeteria_door_inside': ['hallway_cafeteria_entrance', 'cafeteria_center'],
-            'cafeteria_center': ['cafeteria_door_inside', 'cafeteria_north', 'cafeteria_south', 'cafeteria_east'],
-            'cafeteria_north': ['cafeteria_center'],
-            'cafeteria_south': ['cafeteria_center'],
-            'cafeteria_east': ['cafeteria_center']
-        };
 
         function getRegion(pos) {
             if (pos.x > 28) return 'cafeteria';
@@ -693,91 +543,16 @@
             return 'breakroom';
         }
 
-        function findClosestWaypoint(pos, region) {
-            let closest = null;
-            let minDist = Infinity;
-            schoolWaypoints.forEach(wp => {
-                if (!region || wp.region === region) {
-                    const dist = wp.pos.distanceTo(pos);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closest = wp;
-                    }
-                }
-            });
-            return closest;
-        }
-
-        function computeWaypointPath(startPos, targetPos) {
-            const startRegion = getRegion(startPos);
-            const targetRegion = getRegion(targetPos);
-
-            if (startRegion === targetRegion) return [];
-
-            const startWp = findClosestWaypoint(startPos, startRegion);
-            const targetWp = findClosestWaypoint(targetPos, targetRegion);
-
-            if (!startWp || !targetWp) return [];
-
-            const queue = [[startWp.id]];
-            const visited = new Set([startWp.id]);
-
-            while (queue.length > 0) {
-                const path = queue.shift();
-                const lastId = path[path.length - 1];
-
-                if (lastId === targetWp.id) {
-                    return path.map(id => schoolWaypoints.find(w => w.id === id).pos);
-                }
-
-                const neighbors = waypointGraph[lastId] || [];
-                for (const n of neighbors) {
-                    if (!visited.has(n)) {
-                        visited.add(n);
-                        queue.push([...path, n]);
-                    }
-                }
-            }
-            return [targetWp.pos];
-        }
-
-        /**
-         * Procedural Textures
-         */
         function createChalkboardTexture() {
             const canvas = document.createElement('canvas');
             canvas.width = 1024; canvas.height = 512;
             const ctx = canvas.getContext('2d');
-
             ctx.fillStyle = '#163824';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-            for (let i = 0; i < 50; i++) {
-                ctx.beginPath();
-                ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 80 + 10, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 42px "Product Sans", sans-serif';
+            ctx.font = 'bold 42px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('CLASSROOM 101 - FPV FIGHT ARENA', canvas.width / 2, 80);
-
-            ctx.strokeStyle = '#81c784';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(60, 110, canvas.width - 120, 350);
-
-            ctx.font = '22px "Press Start 2P", monospace';
-            ctx.fillStyle = '#fde047';
-            ctx.fillText('CAMPUS & CAFETERIA EDITION', canvas.width / 2, 190);
-
-            ctx.font = '22px sans-serif';
-            ctx.fillStyle = '#e2e8f0';
-            ctx.fillText('• Open/Close Doors = E Key | Left Click = Attack', canvas.width / 2, 260);
-            ctx.fillText('• Head right down the hallway to enter the CAFETERIA!', canvas.width / 2, 310);
-            ctx.fillText('• Push long lunch tables, food trays, and vending machines!', canvas.width / 2, 360);
-
             return new THREE.CanvasTexture(canvas);
         }
 
@@ -785,57 +560,19 @@
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
-
             ctx.fillStyle = color1;
             ctx.fillRect(0, 0, 512, 512);
-
             ctx.strokeStyle = color2;
             ctx.lineWidth = 4;
-
             for (let i = 0; i <= 512; i += 64) {
                 ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
             }
-
             const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
             return tex;
         }
 
-        function createLockerTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256; canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(0, 0, 256, 512);
-
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 6;
-            ctx.strokeRect(4, 4, 248, 504);
-
-            ctx.fillStyle = '#0f172a';
-            for (let y = 30; y < 90; y += 12) {
-                ctx.fillRect(40, y, 176, 5);
-            }
-
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(20, 240, 16, 40);
-            ctx.beginPath();
-            ctx.arc(28, 220, 12, 0, Math.PI * 2);
-            ctx.fillStyle = '#000';
-            ctx.fill();
-
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
-            return tex;
-        }
-
-        /**
-         * Initialize Three.js World
-         */
         function initScene() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0f172a);
@@ -851,7 +588,7 @@
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
-            buildExpandedSchoolMap();
+            buildMap();
             buildFPVWeapon();
             buildAIFighter();
         }
@@ -860,23 +597,12 @@
             staticObstacles.push({ x, z, halfWidth, halfDepth });
         }
 
-        function addPushableFurniture(mesh, origX, origZ, halfWidth, halfDepth, maxPushRadius = 2.0, mass = 1.0) {
+        function addPushableFurniture(mesh, origX, origZ, halfWidth, halfDepth) {
             mesh.updateMatrixWorld(true);
             const bounds = new THREE.Box3().setFromObject(mesh);
-            const height = bounds.max.y - mesh.position.y;
             pushableFurniture.push({
-                mesh: mesh,
-                height: height,
-                origX: origX,
-                origZ: origZ,
-                currX: origX,
-                currZ: origZ,
-                vx: 0,
-                vz: 0,
-                halfWidth: halfWidth,
-                halfDepth: halfDepth,
-                maxRadius: maxPushRadius,
-                mass: mass
+                mesh, height: bounds.max.y - mesh.position.y,
+                currX: origX, currZ: origZ, halfWidth, halfDepth
             });
         }
 
@@ -892,457 +618,73 @@
             doorMesh.position.set(1.3, 1.9, 0);
             doorMesh.castShadow = true;
             doorPivot.add(doorMesh);
-
-            const glass = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.6, 0.8),
-                new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.6 })
-            );
-            glass.position.set(1.3, 2.8, 0.09);
-            doorPivot.add(glass);
-
-            const knob = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8 }));
-            knob.position.set(2.3, 1.8, 0.1);
-            doorPivot.add(knob);
-
             scene.add(doorPivot);
 
-            const doorObj = {
-                id: doorId,
-                pivot: doorPivot,
-                isOpen: false,
-                targetRot: rotY,
-                baseRot: rotY,
-                x: x,
-                z: z
-            };
-
-            doors.push(doorObj);
-            return doorObj;
+            doors.push({ id: doorId, pivot: doorPivot, isOpen: false, targetRot: rotY, baseRot: rotY, x, z });
         }
 
-        /**
-         * Build Map
-         */
-        function buildExpandedSchoolMap() {
-            pushableFurniture.length = 0;
-            staticObstacles.length = 0;
-            doors.length = 0;
-
-            const tileTex = createTileTexture('#cbd5e1', '#94a3b8');
-            const cafeTileTex = createTileTexture('#fef08a', '#eab308');
+        function buildMap() {
+            const tileTex = createTileTexture();
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.8 });
-            const hallwayWallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.7 });
-            const breakRoomWallMat = new THREE.MeshStandardMaterial({ color: 0xdcfce7, roughness: 0.8 });
-            const cafeWallMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.8 });
 
-            // Classroom 101
-            const c101FloorTex = tileTex.clone();
-            c101FloorTex.repeat.set(6, 5);
-            const c101Floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: c101FloorTex }));
-            c101Floor.position.set(0, 0, -0.25);
-            c101Floor.rotation.x = -Math.PI / 2;
-            c101Floor.receiveShadow = true;
-            scene.add(c101Floor);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: tileTex }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
 
-            const c101Ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-            c101Ceil.position.set(0, 5, -0.25);
-            c101Ceil.rotation.x = Math.PI / 2;
-            scene.add(c101Ceil);
-
-            for (let x = -8; x <= 8; x += 8) {
-                for (let z = -6; z <= 4; z += 5) {
-                    const light = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-                    light.position.set(x, 4.95, z);
-                    scene.add(light);
-                }
-            }
-
-            const c101Back = new THREE.Mesh(new THREE.BoxGeometry(26, 5, 0.4), wallMat);
-            c101Back.position.set(0, 2.5, -10);
-            scene.add(c101Back);
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(26, 5, 0.4), wallMat);
+            backWall.position.set(0, 2.5, -10);
+            scene.add(backWall);
             addStaticObstacle(0, -10, 13, 0.4);
 
-            const c101Left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 19.5), wallMat);
-            c101Left.position.set(-13, 2.5, -0.25);
-            scene.add(c101Left);
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 19.5), wallMat);
+            leftWall.position.set(-13, 2.5, -0.25);
+            scene.add(leftWall);
             addStaticObstacle(-13, -0.25, 0.4, 10);
 
-            const c101Right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 19.5), wallMat);
-            c101Right.position.set(13, 2.5, -0.25);
-            scene.add(c101Right);
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 19.5), wallMat);
+            rightWall.position.set(13, 2.5, -0.25);
+            scene.add(rightWall);
             addStaticObstacle(13, -0.25, 0.4, 10);
-
-            const wallLeftSeg = new THREE.Mesh(new THREE.BoxGeometry(11.5, 5, 0.4), wallMat);
-            wallLeftSeg.position.set(-7.25, 2.5, 9.5);
-            scene.add(wallLeftSeg);
-            addStaticObstacle(-7.25, 9.5, 5.75, 0.3);
-
-            const wallRightSeg = new THREE.Mesh(new THREE.BoxGeometry(11.5, 5, 0.4), wallMat);
-            wallRightSeg.position.set(7.25, 2.5, 9.5);
-            scene.add(wallRightSeg);
-            addStaticObstacle(7.25, 9.5, 5.75, 0.3);
-
-            const doorHeader = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.4), wallMat);
-            doorHeader.position.set(0, 4.4, 9.5);
-            scene.add(doorHeader);
 
             createDoor(-1.3, 9.5, 0, 'door_101');
 
             const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() }));
             board.position.set(0, 2.8, -9.75);
             scene.add(board);
-
-            buildClassroomProps();
-
-            // Lockers Hallway
-            const hallFloorTex = tileTex.clone();
-            hallFloorTex.repeat.set(12, 2);
-            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(48, 6), new THREE.MeshStandardMaterial({ map: hallFloorTex }));
-            hallFloor.position.set(4, 0, 12.5);
-            hallFloor.rotation.x = -Math.PI / 2;
-            hallFloor.receiveShadow = true;
-            scene.add(hallFloor);
-
-            const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(48, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-            hallCeil.position.set(4, 5, 12.5);
-            hallCeil.rotation.x = Math.PI / 2;
-            scene.add(hallCeil);
-
-            for (let x = -16; x <= 24; x += 8) {
-                const hLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
-                hLight.position.set(x, 4.95, 12.5);
-                scene.add(hLight);
-            }
-
-            const hallNorthWest = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 0.4), hallwayWallMat);
-            hallNorthWest.position.set(-16.5, 2.5, 9.5);
-            scene.add(hallNorthWest);
-            addStaticObstacle(-16.5, 9.5, 3.5, 0.3);
-
-            const hallNorthEast = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 0.4), hallwayWallMat);
-            hallNorthEast.position.set(20.5, 2.5, 9.5);
-            scene.add(hallNorthEast);
-            addStaticObstacle(20.5, 9.5, 7.5, 0.3);
-
-            const hallSouthWest = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 0.4), hallwayWallMat);
-            hallSouthWest.position.set(-15, 2.5, 15.5);
-            scene.add(hallSouthWest);
-            addStaticObstacle(-15, 15.5, 5.0, 0.3);
-
-            const hallSouthEast = new THREE.Mesh(new THREE.BoxGeometry(18, 5, 0.4), hallwayWallMat);
-            hallSouthEast.position.set(19, 2.5, 15.5);
-            scene.add(hallSouthEast);
-            addStaticObstacle(19, 15.5, 9.0, 0.3);
-
-            const hallWestWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 6), hallwayWallMat);
-            hallWestWall.position.set(-20, 2.5, 12.5);
-            scene.add(hallWestWall);
-            addStaticObstacle(-20, 12.5, 0.4, 3.0);
-
-            const lockerTex = createLockerTexture();
-            lockerTex.repeat.set(12, 1);
-            const lockerMat = new THREE.MeshStandardMaterial({ map: lockerTex, roughness: 0.3, metalness: 0.6 });
-
-            const lockersWest = new THREE.Mesh(new THREE.BoxGeometry(11, 3.8, 0.8), lockerMat);
-            lockersWest.position.set(-7.5, 1.9, 9.9);
-            scene.add(lockersWest);
-
-            const lockersEast = new THREE.Mesh(new THREE.BoxGeometry(15, 3.8, 0.8), lockerMat);
-            lockersEast.position.set(19.5, 1.9, 9.9);
-            scene.add(lockersEast);
-
-            // Break Room
-            const breakWallPartitionLeft = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5, 0.4), hallwayWallMat);
-            breakWallPartitionLeft.position.set(-5.75, 2.5, 15.5);
-            scene.add(breakWallPartitionLeft);
-            addStaticObstacle(-5.75, 15.5, 4.25, 0.3);
-
-            const breakWallPartitionRight = new THREE.Mesh(new THREE.BoxGeometry(8.5, 5, 0.4), hallwayWallMat);
-            breakWallPartitionRight.position.set(5.75, 2.5, 15.5);
-            scene.add(breakWallPartitionRight);
-            addStaticObstacle(5.75, 15.5, 4.25, 0.3);
-
-            const breakDoorHeader = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.4), hallwayWallMat);
-            breakDoorHeader.position.set(0, 4.4, 15.5);
-            scene.add(breakDoorHeader);
-
-            createDoor(-1.3, 15.5, 0, 'door_break');
-
-            const breakFloorTex = tileTex.clone();
-            breakFloorTex.repeat.set(4, 4);
-            const breakFloor = new THREE.Mesh(new THREE.PlaneGeometry(20, 12), new THREE.MeshStandardMaterial({ map: breakFloorTex }));
-            breakFloor.position.set(0, 0, 21.5);
-            breakFloor.rotation.x = -Math.PI / 2;
-            breakFloor.receiveShadow = true;
-            scene.add(breakFloor);
-
-            const breakCeil = new THREE.Mesh(new THREE.PlaneGeometry(20, 12), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-            breakCeil.position.set(0, 5, 21.5);
-            breakCeil.rotation.x = Math.PI / 2;
-            scene.add(breakCeil);
-
-            const breakBackWall = new THREE.Mesh(new THREE.BoxGeometry(20, 5, 0.4), breakRoomWallMat);
-            breakBackWall.position.set(0, 2.5, 27.5);
-            scene.add(breakBackWall);
-            addStaticObstacle(0, 27.5, 10, 0.3);
-
-            const breakLeftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 12), breakRoomWallMat);
-            breakLeftWall.position.set(-10, 2.5, 21.5);
-            scene.add(breakLeftWall);
-            addStaticObstacle(-10, 21.5, 0.3, 6);
-
-            const breakRightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 12), breakRoomWallMat);
-            breakRightWall.position.set(10, 2.5, 21.5);
-            scene.add(breakRightWall);
-            addStaticObstacle(10, 21.5, 0.3, 6);
-
-            const vending = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.6, 1.2), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-            vending.position.set(-7.5, 1.8, 25.5);
-            vending.castShadow = true;
-            scene.add(vending);
-            addStaticObstacle(-7.5, 25.5, 1.1, 0.7);
-
-            // Cafeteria
-            const cafeEntranceWallTop = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 11), hallwayWallMat);
-            cafeEntranceWallTop.position.set(28, 2.5, 4.0);
-            scene.add(cafeEntranceWallTop);
-            addStaticObstacle(28, 4.0, 0.3, 5.5);
-
-            const cafeEntranceWallBottom = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5, 13), hallwayWallMat);
-            cafeEntranceWallBottom.position.set(28, 2.5, 22.0);
-            scene.add(cafeEntranceWallBottom);
-            addStaticObstacle(28, 22.0, 0.3, 6.5);
-
-            const cafeDoorHeader = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.2, 7), hallwayWallMat);
-            cafeDoorHeader.position.set(28, 4.4, 12.5);
-            scene.add(cafeDoorHeader);
-
-            createDoor(28, 11.2, Math.PI / 2, 'door_cafeteria');
-
-            const cafeFloor = new THREE.Mesh(new THREE.PlaneGeometry(32, 40), new THREE.MeshStandardMaterial({ map: cafeTileTex }));
-            cafeFloor.position.set(44, 0, 12.0);
-            cafeFloor.rotation.x = -Math.PI / 2;
-            cafeFloor.receiveShadow = true;
-            scene.add(cafeFloor);
-
-            const cafeCeil = new THREE.Mesh(new THREE.PlaneGeometry(32, 40), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-            cafeCeil.position.set(44, 6.5, 12.0);
-            cafeCeil.rotation.x = Math.PI / 2;
-            scene.add(cafeCeil);
-
-            const cafeNorthWall = new THREE.Mesh(new THREE.BoxGeometry(32, 6.5, 0.4), cafeWallMat);
-            cafeNorthWall.position.set(44, 3.25, -8);
-            scene.add(cafeNorthWall);
-            addStaticObstacle(44, -8, 16, 0.4);
-
-            const cafeSouthWall = new THREE.Mesh(new THREE.BoxGeometry(32, 6.5, 0.4), cafeWallMat);
-            cafeSouthWall.position.set(44, 3.25, 32);
-            scene.add(cafeSouthWall);
-            addStaticObstacle(44, 32, 16, 0.4);
-
-            const cafeEastWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 6.5, 40), cafeWallMat);
-            cafeEastWall.position.set(60, 3.25, 12);
-            scene.add(cafeEastWall);
-            addStaticObstacle(60, 12, 0.4, 20);
-
-            for (let x = 34; x <= 54; x += 10) {
-                for (let z = -2; z <= 26; z += 12) {
-                    const cLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 2), new THREE.MeshBasicMaterial({ color: 0xfffbe3 }));
-                    cLight.position.set(x, 6.45, z);
-                    scene.add(cLight);
-                }
-            }
-
-            const foodCounterGroup = new THREE.Group();
-            foodCounterGroup.position.set(52, 0, -3.5);
-            const counterTop = new THREE.Mesh(new THREE.BoxGeometry(12.0, 1.2, 2.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 }));
-            counterTop.position.y = 0.6;
-            counterTop.castShadow = true;
-            foodCounterGroup.add(counterTop);
-
-            const sneezeGuard = new THREE.Mesh(new THREE.BoxGeometry(11.8, 1.0, 0.1), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 }));
-            sneezeGuard.position.set(0, 1.7, 0.8);
-            foodCounterGroup.add(sneezeGuard);
-            scene.add(foodCounterGroup);
-            addStaticObstacle(52, -3.5, 6.0, 1.1);
-
-            const trayRack = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 1.8), new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 }));
-            trayRack.position.set(33, 1.75, -5.5);
-            trayRack.castShadow = true;
-            scene.add(trayRack);
-            addStaticObstacle(33, -5.5, 1.25, 0.9);
-
-            const cVending1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb }));
-            cVending1.position.set(57.5, 1.9, 28);
-            scene.add(cVending1);
-            addStaticObstacle(57.5, 28, 1.1, 0.7);
-
-            const cVending2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x16a34a }));
-            cVending2.position.set(53.0, 1.9, 28);
-            scene.add(cVending2);
-            addStaticObstacle(53.0, 28, 1.1, 0.7);
-
-            buildCafeteriaLunchTables();
-            buildHallwayAndBreakProps();
-        }
-
-        function buildClassroomProps() {
-            const teacherDesk = new THREE.Group();
-            teacherDesk.position.set(7, 0, -7.5);
-            const teacherTop = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.2, 2.0), new THREE.MeshStandardMaterial({ color: 0x92400e }));
-            teacherTop.position.y = 1.3;
-            teacherTop.castShadow = true;
-            teacherDesk.add(teacherTop);
-            
-            const teacherBase = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 1.8), new THREE.MeshStandardMaterial({ color: 0x78350f }));
-            teacherBase.position.y = 0.6;
-            teacherBase.castShadow = true;
-            teacherDesk.add(teacherBase);
-            scene.add(teacherDesk);
-            addPushableFurniture(teacherDesk, 7, -7.5, 1.75, 1.0, 1.2, 2.2);
-
-            const deskPositions = [
-                {x: -6, z: -3}, {x: -2, z: -3}, {x: 2, z: -3}, {x: 6, z: -3},
-                {x: -6, z: 2},  {x: -2, z: 2},  {x: 2, z: 2},  {x: 6, z: 2}
-            ];
-
-            const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
-            const metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
-            const plasticChairMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4 });
-
-            deskPositions.forEach(pos => {
-                const deskGroup = new THREE.Group();
-                deskGroup.position.set(pos.x, 0, pos.z);
-
-                const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat);
-                top.position.y = 1.3;
-                top.castShadow = true;
-                deskGroup.add(top);
-
-                const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.3);
-                [ {x: -0.9, z: -0.5}, {x: 0.9, z: -0.5}, {x: -0.9, z: 0.5}, {x: 0.9, z: 0.5} ].forEach(l => {
-                    const leg = new THREE.Mesh(legGeo, metalMat);
-                    leg.position.set(l.x, 0.65, l.z);
-                    deskGroup.add(leg);
-                });
-
-                const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.9), plasticChairMat);
-                chairSeat.position.set(0, 0.75, 1.1);
-                chairSeat.castShadow = true;
-                deskGroup.add(chairSeat);
-
-                scene.add(deskGroup);
-                addPushableFurniture(deskGroup, pos.x, pos.z, 1.1, 1.25, 1.5, 1.0);
-            });
-        }
-
-        function buildCafeteriaLunchTables() {
-            const tableMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
-            const benchMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 });
-            const tablePositions = [
-                { x: 38, z: 10 }, { x: 46, z: 10 }, { x: 52, z: 10 },
-                { x: 38, z: 18 }, { x: 46, z: 18 }, { x: 52, z: 18 },
-                { x: 38, z: 26 }, { x: 46, z: 26 }, { x: 52, z: 26 }
-            ];
-
-            tablePositions.forEach(({ x, z }) => {
-                const table = new THREE.Group();
-                const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tableMat);
-                top.position.y = 1.2;
-                top.castShadow = true;
-                table.add(top);
-
-                const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8);
-                [[-1.1, -0.8], [1.1, -0.8], [-1.1, 0.8], [1.1, 0.8]].forEach(([lx, lz]) => {
-                    const leg = new THREE.Mesh(legGeo, benchMat);
-                    leg.position.set(lx, 0.6, lz);
-                    table.add(leg);
-                });
-
-                const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), benchMat);
-                benchA.position.set(0, 0.82, 1.45);
-                table.add(benchA);
-                const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), benchMat);
-                benchB.position.set(0, 0.82, -1.45);
-                table.add(benchB);
-
-                table.position.set(x, 0, z);
-                scene.add(table);
-                addPushableFurniture(table, x, z, 1.5, 1.2, 1.8, 1.2);
-            });
-        }
-
-        function buildHallwayAndBreakProps() {
-            const vending = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.6, 1.2), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
-            vending.position.set(-4.5, 1.8, 18.5);
-            scene.add(vending);
-            addPushableFurniture(vending, -4.5, 18.5, 1.1, 0.7, 1.4, 1.5);
-
-            const printer = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-            printer.position.set(6, 0.9, 22.5);
-            scene.add(printer);
-            addPushableFurniture(printer, 6, 22.5, 0.8, 0.8, 1.4, 0.8);
         }
 
         function buildFPVWeapon() {
-            fpvWeaponGroup = new THREE.Group();
-            const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2563eb });
-
-            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5), sleeveMat);
-            arm.rotation.x = Math.PI / 3;
-            arm.position.set(0.35, -0.3, -0.5);
-            fpvWeaponGroup.add(arm);
-
-            const rulerMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.2 });
-            fpvRulerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.12), rulerMat);
-            fpvRulerMesh.position.set(0.38, -0.1, -0.7);
-            fpvRulerMesh.rotation.x = -Math.PI / 4;
-            fpvWeaponGroup.add(fpvRulerMesh);
-
+            const fpvWeaponGroup = new THREE.Group();
+            const ruler = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 0.85, 0.12),
+                new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 })
+            );
+            ruler.position.set(0.38, -0.1, -0.7);
+            ruler.rotation.x = -Math.PI / 4;
+            fpvWeaponGroup.add(ruler);
             camera.add(fpvWeaponGroup);
             scene.add(camera);
         }
 
         function buildAIFighter() {
             const aiGroup = new THREE.Group();
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
-
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.1, 0.5), bodyMat);
+            const torso = new THREE.Mesh(
+                new THREE.BoxGeometry(0.85, 1.1, 0.5),
+                new THREE.MeshStandardMaterial({ color: 0xd97706 })
+            );
             torso.position.y = 0.85;
             torso.castShadow = true;
             aiGroup.add(torso);
 
-            ai.head = new THREE.Group();
-            ai.head.position.y = 1.6;
-            aiGroup.add(ai.head);
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, 0.6, 0.6),
+                new THREE.MeshStandardMaterial({ color: 0xffdbac })
+            );
+            head.position.y = 1.6;
+            head.castShadow = true;
+            aiGroup.add(head);
 
-            const headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), skinMat);
-            headMesh.castShadow = true;
-            ai.head.add(headMesh);
-
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-            const lEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat);
-            lEye.position.set(-0.15, 0.05, -0.31);
-            ai.head.add(lEye);
-
-            const rEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat);
-            rEye.position.set(0.15, 0.05, -0.31);
-            ai.head.add(rEye);
-
-            ai.rightArm = new THREE.Group();
-            ai.rightArm.position.set(0.5, 1.2, 0);
-
-            const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), bodyMat);
-            rArmMesh.position.y = -0.3;
-            ai.rightArm.add(rArmMesh);
-
-            const ruler = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.12), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
-            ruler.position.set(0, -0.5, -0.2);
-            ruler.rotation.x = -Math.PI / 4;
-            ai.rightArm.add(ruler);
-
-            aiGroup.add(ai.rightArm);
             ai.mesh = aiGroup;
             scene.add(ai.mesh);
         }
@@ -1350,29 +692,21 @@
         function checkDoorProximity() {
             const prompt = document.getElementById('interact-prompt');
             let nearDoor = null;
-
             doors.forEach(d => {
-                const dist = player.position.distanceTo(new THREE.Vector3(d.x, EYE_HEIGHT, d.z));
-                if (dist < 2.5) nearDoor = d;
+                if (player.position.distanceTo(new THREE.Vector3(d.x, EYE_HEIGHT, d.z)) < 2.5) nearDoor = d;
             });
-
-            if (nearDoor) {
-                prompt.classList.remove('opacity-0');
-            } else {
-                prompt.classList.add('opacity-0');
-            }
+            prompt.classList.toggle('opacity-0', !nearDoor);
             return nearDoor;
         }
 
         function toggleDoor(doorObj) {
             if (!doorObj) return;
             doorObj.isOpen = !doorObj.isOpen;
-            doorObj.targetRot = doorObj.isOpen ? doorObj.baseRot + Math.PI / 2 : doorObj.baseRot;
+            doorObj.targetRot = doorObj.baseRot + (doorObj.isOpen ? Math.PI / 2 : 0);
             soundFX.playDoorSqueak();
         }
 
         function setupGameEvents() {
-            // Difficulty Button Selectors
             const diffBtns = {
                 'EASY': document.getElementById('diff-easy'),
                 'MEDIUM': document.getElementById('diff-medium'),
@@ -1400,9 +734,8 @@
 
             document.addEventListener('mousemove', (e) => {
                 if (document.pointerLockElement === document.body && gameState === 'PLAYING') {
-                    const sensitivity = 0.0022;
-                    player.yaw -= e.movementX * sensitivity;
-                    player.pitch -= e.movementY * sensitivity;
+                    player.yaw -= e.movementX * 0.0022;
+                    player.pitch -= e.movementY * 0.0022;
                     player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
                 }
             });
@@ -1416,16 +749,11 @@
             window.addEventListener('keydown', (e) => {
                 const key = e.key.toLowerCase();
                 keys[key] = true;
-
                 if (key === 'e' && gameState === 'PLAYING') {
                     const nearDoor = checkDoorProximity();
                     if (nearDoor) toggleDoor(nearDoor);
                 }
-
-                if (key === 'q' && !e.repeat && gameState === 'PLAYING') {
-                    shootChalk();
-                }
-
+                if (key === 'q' && !e.repeat && gameState === 'PLAYING') shootChalk();
                 if (e.code === 'Space' && player.isGrounded && gameState === 'PLAYING') {
                     player.velocity.y = JUMP_STRENGTH;
                     player.isGrounded = false;
@@ -1433,10 +761,7 @@
                 }
             });
 
-            window.addEventListener('keyup', (e) => {
-                keys[e.key.toLowerCase()] = false;
-            });
-
+            window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
             document.getElementById('btn-start').addEventListener('click', startMatch);
 
             window.addEventListener('resize', () => {
@@ -1447,10 +772,28 @@
             });
         }
 
+        function triggerPlayerAttack() {
+            if (player.attackCooldown > 0 || gameState !== 'PLAYING') return;
+            player.attackCooldown = 0.45;
+            soundFX.playSwing();
+
+            const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+            const hitPos = player.position.clone().add(new THREE.Vector3(0, 0.3, 0)).add(forward.multiplyScalar(1.8));
+
+            if (hitPos.distanceTo(ai.position) < 2.0) {
+                ai.hp = Math.max(0, ai.hp - 12);
+                showHitPop(ai.position.clone().add(new THREE.Vector3(0, 1.2, 0)), '-12');
+                soundFX.playHit();
+                createHitParticles(ai.position.clone().add(new THREE.Vector3(0, 1, 0)));
+                if (ai.hp <= 0) endGame('YOU WON! CLASS REBEL DEFEATED!', true);
+            }
+            updateHUD();
+        }
+
         function shootChalk() {
             if (player.chalkCooldown > 0) return;
 
-            player.chalkCooldown = 10;
+            player.chalkCooldown = 10.0;
             updateChalkStatus();
 
             const dir = new THREE.Vector3(
@@ -1460,26 +803,37 @@
             ).normalize();
 
             const mesh = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 10, 10),
+                new THREE.SphereGeometry(0.12, 10, 10),
                 new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 })
             );
-            mesh.position.copy(player.position).add(new THREE.Vector3(0, 0.15, 0));
+            mesh.position.copy(player.position).add(new THREE.Vector3(0, 0.2, 0));
             scene.add(mesh);
 
             chalkProjectiles.push({
                 mesh,
-                velocity: dir.multiplyScalar(16),
-                life: 1.8,
-                radius: 0.15
+                velocity: dir.multiplyScalar(18),
+                life: 2.0
             });
         }
 
         function updateChalkStatus() {
             const chalkStatus = document.getElementById('chalk-status');
             if (!chalkStatus) return;
-            chalkStatus.innerText = player.chalkCooldown > 0 ? `Chalk: RECHARGING (${Math.ceil(player.chalkCooldown)})` : 'Chalk: READY';
-            chalkStatus.classList.toggle('text-emerald-400', player.chalkCooldown <= 0);
-            chalkStatus.classList.toggle('text-yellow-400', player.chalkCooldown > 0);
+            if (player.chalkCooldown > 0) {
+                chalkStatus.innerText = `Chalk: RECHARGING (${Math.ceil(player.chalkCooldown)}s)`;
+                chalkStatus.className = 'mt-1 font-bold text-yellow-400';
+            } else {
+                chalkStatus.innerText = 'Chalk: READY';
+                chalkStatus.className = 'mt-1 font-bold text-emerald-400';
+            }
+        }
+
+        function flashHurtVignette() {
+            const overlay = document.getElementById('hurt-overlay');
+            if (!overlay) return;
+            overlay.classList.remove('damage-flash');
+            void overlay.offsetWidth; // trigger reflow
+            overlay.classList.add('damage-flash');
         }
 
         function resolveStaticObstacles(pos, radius) {
@@ -1488,17 +842,12 @@
                 const maxX = obs.x + obs.halfWidth;
                 const minZ = obs.z - obs.halfDepth;
                 const maxZ = obs.z + obs.halfDepth;
-
-                if (pos.x > minX - radius && pos.x < maxX + radius &&
-                    pos.z > minZ - radius && pos.z < maxZ + radius) {
-                    
+                if (pos.x > minX - radius && pos.x < maxX + radius && pos.z > minZ - radius && pos.z < maxZ + radius) {
                     const dxMin = Math.abs(pos.x - (minX - radius));
                     const dxMax = Math.abs(pos.x - (maxX + radius));
                     const dzMin = Math.abs(pos.z - (minZ - radius));
                     const dzMax = Math.abs(pos.z - (maxZ + radius));
-
                     const min = Math.min(dxMin, dxMax, dzMin, dzMax);
-
                     if (min === dxMin) pos.x = minX - radius;
                     else if (min === dxMax) pos.x = maxX + radius;
                     else if (min === dzMin) pos.z = minZ - radius;
@@ -1507,43 +856,7 @@
             });
         }
 
-        function resolveDynamicFurnitureCollisions(entityPos, radius, entityFeet, bodyHeight, previousFeet = entityFeet, canLand = false) {
-            pushableFurniture.forEach(item => {
-                const minX = item.currX - item.halfWidth;
-                const maxX = item.currX + item.halfWidth;
-                const minZ = item.currZ - item.halfDepth;
-                const maxZ = item.currZ + item.halfDepth;
-                const overlapsHorizontally = entityPos.x > minX - radius && entityPos.x < maxX + radius &&
-                    entityPos.z > minZ - radius && entityPos.z < maxZ + radius;
-
-                if (!overlapsHorizontally) return;
-
-                const topY = item.height;
-                if (canLand && entityFeet <= topY && previousFeet >= topY && player.velocity.y <= 0) {
-                    entityPos.y = topY + EYE_HEIGHT;
-                    player.velocity.y = 0;
-                    player.isGrounded = true;
-                    entityFeet = topY;
-                    return;
-                }
-
-                if (entityFeet >= topY || entityFeet + bodyHeight <= 0) return;
-
-                const dxMin = Math.abs(entityPos.x - (minX - radius));
-                const dxMax = Math.abs(entityPos.x - (maxX + radius));
-                const dzMin = Math.abs(entityPos.z - (minZ - radius));
-                const dzMax = Math.abs(entityPos.z - (maxZ + radius));
-                const min = Math.min(dxMin, dxMax, dzMin, dzMax);
-
-                if (min === dxMin) entityPos.x = minX - radius;
-                else if (min === dxMax) entityPos.x = maxX + radius;
-                else if (min === dzMin) entityPos.z = minZ - radius;
-                else if (min === dzMax) entityPos.z = maxZ + radius;
-            });
-        }
-
         function updatePlayerPhysics(delta) {
-            const previousFeet = player.position.y - EYE_HEIGHT;
             player.velocity.y += GRAVITY * delta;
 
             const moveVec = new THREE.Vector3();
@@ -1551,15 +864,13 @@
             if (keys['s']) moveVec.z += 1;
             if (keys['a']) moveVec.x -= 1;
             if (keys['d']) moveVec.x += 1;
-
             moveVec.normalize();
 
-            const moveSpeed = 8.0;
             const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
             const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
             const wishVel = new THREE.Vector3()
-                .addScaledVector(forward, -moveVec.z * moveSpeed)
-                .addScaledVector(right, moveVec.x * moveSpeed);
+                .addScaledVector(forward, -moveVec.z * 8.0)
+                .addScaledVector(right, moveVec.x * 8.0);
 
             player.position.x += wishVel.x * delta;
             player.position.z += wishVel.z * delta;
@@ -1571,76 +882,34 @@
                 player.isGrounded = true;
             }
 
-            player.position.x = Math.max(-19, Math.min(59, player.position.x));
-            player.position.z = Math.max(-9.5, Math.min(31, player.position.z));
-
             resolveStaticObstacles(player.position, PLAYER_RADIUS);
-            resolveDynamicFurnitureCollisions(
-                player.position,
-                PLAYER_RADIUS,
-                player.position.y - EYE_HEIGHT,
-                1.8,
-                previousFeet,
-                true
-            );
 
             camera.position.copy(player.position);
             camera.rotation.y = player.yaw;
             camera.rotation.x = player.pitch;
 
-            const region = getRegion(player.position);
-            document.getElementById('location-badge').innerText = region === 'cafeteria' ? '🍕 CAFETERIA' : (region === 'breakroom' ? '☕ UTILITY ROOM' : (region === 'hallway' ? '🏫 LOCKERS HALLWAY' : '📚 CLASSROOM 101'));
+            document.getElementById('location-badge').innerText = getRegion(player.position).toUpperCase();
             checkDoorProximity();
 
-            if (isMultiplayer && gameState === 'PLAYING') {
-                socket.emit('player_update', {
-                    x: player.position.x,
-                    y: player.position.y,
-                    z: player.position.z,
-                    yaw: player.yaw,
-                    pitch: player.pitch
-                });
+            if (player.attackCooldown > 0) player.attackCooldown -= delta;
+            if (player.chalkCooldown > 0) {
+                player.chalkCooldown -= delta;
+                updateChalkStatus();
             }
         }
 
         function updateDoors(delta) {
             doors.forEach((door) => {
-                const angle = THREE.MathUtils.lerp(door.pivot.rotation.y, door.baseRot + (door.isOpen ? Math.PI / 2 : 0), 1.5 * delta);
-                door.pivot.rotation.y = angle;
+                door.pivot.rotation.y = THREE.MathUtils.lerp(door.pivot.rotation.y, door.baseRot + (door.isOpen ? Math.PI / 2 : 0), 1.5 * delta);
             });
         }
 
-        function triggerPlayerAttack() {
-            if (player.attackCooldown > 0 || gameState !== 'PLAYING') return;
-            player.attackCooldown = 0.45;
-            soundFX.playSwing();
-
-            const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
-            const origin = player.position.clone().add(new THREE.Vector3(0, 0.3, 0));
-            const hitPos = origin.clone().add(forward.clone().multiplyScalar(1.8));
-
-            const aiDist = hitPos.distanceTo(ai.position);
-            if (aiDist < 2.0) {
-                ai.hp = Math.max(0, ai.hp - 12);
-                showHitPop(ai.position.clone().add(new THREE.Vector3(0, 1.2, 0)), '-12');
-                soundFX.playHit();
-                createHitParticles(ai.position.clone().add(new THREE.Vector3(0, 1, 0)));
-                if (ai.hp <= 0) endGame('YOU WON! CLASS REBEL HAS BEEN DEFEATED!', true);
-            }
-            updateHUD();
-        }
-
         function updateSmartAI(delta) {
-            if (gameState !== 'PLAYING' || isMultiplayer) return;
+            if (gameState !== 'PLAYING') return;
 
             ai.velocity.y += GRAVITY * delta;
             ai.position.y += ai.velocity.y * delta;
-
-            if (ai.position.y <= 0) {
-                ai.position.y = 0;
-                ai.velocity.y = 0;
-                ai.isGrounded = true;
-            }
+            if (ai.position.y <= 0) { ai.position.y = 0; ai.velocity.y = 0; ai.isGrounded = true; }
 
             const playerDist = ai.position.distanceTo(player.position);
             const dx = player.position.x - ai.position.x;
@@ -1648,52 +917,59 @@
 
             const targetYaw = Math.atan2(dx, dz) - Math.PI;
             let diff = targetYaw - ai.yaw;
-            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-
-            const turnSpeed = aiDifficulty === 'HARD' ? 14.0 : (aiDifficulty === 'MEDIUM' ? 10.0 : 7.5);
-            ai.yaw += diff * Math.min(1.0, turnSpeed * delta);
+            ai.yaw += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(1.0, 10.0 * delta);
             ai.mesh.rotation.y = ai.yaw;
 
             const speed = aiDifficulty === 'HARD' ? 7.2 : (aiDifficulty === 'MEDIUM' ? 5.8 : 4.8);
-            const forwardDir = new THREE.Vector3(-Math.sin(ai.yaw), 0, -Math.cos(ai.yaw));
-            const aiVel = new THREE.Vector3();
-
             if (playerDist > 2.6) {
-                aiVel.addScaledVector(forwardDir, speed);
-            } else {
-                if (ai.attackCooldown <= 0) {
-                    triggerAIAttack();
-                }
+                const forwardDir = new THREE.Vector3(-Math.sin(ai.yaw), 0, -Math.cos(ai.yaw));
+                ai.position.addScaledVector(forwardDir, speed * delta);
+            } else if (ai.attackCooldown <= 0) {
+                ai.attackCooldown = aiDifficulty === 'HARD' ? 0.45 : 0.7;
+                soundFX.playSwing();
+                setTimeout(() => {
+                    if (ai.position.distanceTo(player.position) <= 3.2 && gameState === 'PLAYING') {
+                        const dmg = aiDifficulty === 'HARD' ? 15 : 10;
+                        player.hp = Math.max(0, player.hp - dmg);
+                        soundFX.playHit();
+                        flashHurtVignette();
+                        updateHUD();
+                        showHitPop(player.position, `-${dmg}`);
+                        if (player.hp <= 0) endGame('FAILED! SENT TO PRINCIPAL\'S OFFICE!', false);
+                    }
+                }, 100);
             }
 
-            ai.position.addScaledVector(aiVel, delta);
-            ai.position.x = Math.max(-19, Math.min(59, ai.position.x));
-            ai.position.z = Math.max(-9.5, Math.min(31, ai.position.z));
             ai.mesh.position.copy(ai.position);
-
-            if (ai.attackCooldown > 0) {
-                ai.attackCooldown -= delta;
-            }
+            if (ai.attackCooldown > 0) ai.attackCooldown -= delta;
         }
 
-        function triggerAIAttack() {
-            ai.attackCooldown = aiDifficulty === 'HARD' ? 0.45 : (aiDifficulty === 'MEDIUM' ? 0.65 : 0.8);
-            soundFX.playSwing();
+        function updateChalkProjectiles(delta) {
+            for (let i = chalkProjectiles.length - 1; i >= 0; i--) {
+                const proj = chalkProjectiles[i];
+                proj.mesh.position.addScaledVector(proj.velocity, delta);
+                proj.life -= delta;
 
-            setTimeout(() => {
-                const aiCenterPos = ai.position.clone().add(new THREE.Vector3(0, EYE_HEIGHT, 0));
-                const dist = aiCenterPos.distanceTo(player.position);
-                if (dist <= 3.0 && gameState === 'PLAYING') {
-                    const dmg = aiDifficulty === 'HARD' ? 15 : (aiDifficulty === 'MEDIUM' ? 11 : 9);
-                    player.hp = Math.max(0, player.hp - dmg);
+                // Check collision with AI
+                if (proj.mesh.position.distanceTo(ai.position.clone().add(new THREE.Vector3(0, 1, 0))) < 1.2) {
+                    ai.hp = Math.max(0, ai.hp - 8);
+                    showHitPop(ai.position.clone().add(new THREE.Vector3(0, 1.5, 0)), '-8');
                     soundFX.playHit();
+                    createHitParticles(ai.position.clone().add(new THREE.Vector3(0, 1, 0)));
                     updateHUD();
-                    showHitPop(player.position, `-${dmg}`);
-                    if (player.hp <= 0) {
-                        endGame("FAILED! SENT TO PRINCIPAL'S OFFICE!", false);
-                    }
+
+                    scene.remove(proj.mesh);
+                    chalkProjectiles.splice(i, 1);
+
+                    if (ai.hp <= 0) endGame('YOU WON! CLASS REBEL DEFEATED!', true);
+                    continue;
                 }
-            }, 100);
+
+                if (proj.life <= 0) {
+                    scene.remove(proj.mesh);
+                    chalkProjectiles.splice(i, 1);
+                }
+            }
         }
 
         function updateHUD() {
@@ -1705,7 +981,6 @@
 
         function startMatch() {
             soundFX.init();
-
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('ui-layer').classList.remove('opacity-0');
             document.getElementById('crosshair').classList.remove('hidden');
@@ -1713,27 +988,19 @@
             player.position.set(0, EYE_HEIGHT, 4);
             player.hp = 100;
             player.chalkCooldown = 0;
-            chalkProjectiles.forEach(projectile => scene.remove(projectile.mesh));
-            chalkProjectiles.length = 0;
             updateChalkStatus();
-            player.yaw = 0;
-            player.pitch = 0;
 
-            if (!isMultiplayer) {
-                ai.position.set(0, 0, -4);
-                ai.hp = 100;
-                ai.mesh.visible = true;
-            }
+            ai.position.set(0, 0, -4);
+            ai.hp = 100;
+            ai.mesh.visible = true;
+
+            chalkProjectiles.forEach(p => scene.remove(p.mesh));
+            chalkProjectiles.length = 0;
 
             updateHUD();
-
-            matchTime = 99;
-            document.getElementById('timer').innerText = matchTime;
-
             gameState = 'PLAYING';
             showAnnouncer('CLASS IS IN SESSION!');
             syncMobileControls();
-
             document.body.requestPointerLock();
         }
 
@@ -1754,15 +1021,11 @@
             const announcer = document.getElementById('announcer-text');
             announcer.innerText = text;
             announcer.style.transform = 'scale(1)';
-            setTimeout(() => {
-                announcer.style.transform = 'scale(0)';
-            }, 1200);
+            setTimeout(() => { announcer.style.transform = 'scale(0)'; }, 1200);
         }
 
         function showHitPop(worldPos, text) {
-            const pos = worldPos.clone();
-            pos.project(camera);
-
+            const pos = worldPos.clone().project(camera);
             const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
             const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
 
@@ -1772,19 +1035,17 @@
             elem.style.left = `${x}px`;
             elem.style.top = `${y}px`;
             document.body.appendChild(elem);
-
             setTimeout(() => elem.remove(), 600);
         }
 
         function createHitParticles(pos) {
-            for (let i = 0; i < 12; i++) {
+            for (let i = 0; i < 10; i++) {
                 const p = new THREE.Mesh(
                     new THREE.SphereGeometry(0.06, 4, 4),
                     new THREE.MeshBasicMaterial({ color: 0xfacc15 })
                 );
                 p.position.copy(pos);
                 scene.add(p);
-
                 particles.push({
                     mesh: p,
                     vel: new THREE.Vector3((Math.random() - 0.5) * 6, Math.random() * 4 + 1, (Math.random() - 0.5) * 6),
@@ -1799,7 +1060,6 @@
                 p.life -= delta;
                 p.vel.y -= 10 * delta;
                 p.mesh.position.addScaledVector(p.vel, delta);
-
                 if (p.life <= 0) {
                     scene.remove(p.mesh);
                     particles.splice(i, 1);
@@ -1807,24 +1067,10 @@
             }
         }
 
-        function updateChalkProjectiles(delta) {
-            for (let i = chalkProjectiles.length - 1; i >= 0; i--) {
-                const projectile = chalkProjectiles[i];
-                projectile.mesh.position.addScaledVector(projectile.velocity, delta);
-                projectile.life -= delta;
-                if (projectile.life <= 0) {
-                    scene.remove(projectile.mesh);
-                    chalkProjectiles.splice(i, 1);
-                }
-            }
-        }
-
         function animate() {
             requestAnimationFrame(animate);
-
-            const now = performance.now();
-            const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1);
-            animate.lastTime = now;
+            const delta = Math.min((performance.now() - (animate.lastTime || performance.now())) / 1000, 0.1);
+            animate.lastTime = performance.now();
 
             if (gameState === 'PLAYING') {
                 updateDoors(delta);
@@ -1833,7 +1079,6 @@
                 updateChalkProjectiles(delta);
                 updateParticles(delta);
             }
-
             renderer.render(scene, camera);
         }
 
