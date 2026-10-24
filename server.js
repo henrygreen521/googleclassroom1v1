@@ -1,6 +1,5 @@
 const express = require('express');
 const http = require('http');
-const fs = require('fs');
 const { Server } = require('socket.io');
 const path = require('path');
 
@@ -8,93 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*" }
-});
-
-function addGhostCleanupScript(html) {
-    const fixScript = `
-        <script>
-            (() => {
-                function removeDeadPeerMesh(id) {
-                    if (window.peerMeshes && window.peerMeshes[id]) {
-                        const mesh = window.peerMeshes[id];
-                        if (mesh && mesh.parent) mesh.parent.remove(mesh);
-                        delete window.peerMeshes[id];
-                    }
-
-                    if (window.peerPlayers && window.peerPlayers[id]) {
-                        const peer = window.peerPlayers[id];
-                        if (peer && peer.mesh && peer.mesh.parent) {
-                            peer.mesh.parent.remove(peer.mesh);
-                            peer.mesh = null;
-                        }
-                        delete window.peerPlayers[id];
-                    }
-                }
-
-                function cleanupDeadMeshes() {
-                    if (!window.peerPlayers) return;
-                    Object.keys(window.peerPlayers).forEach((id) => {
-                        const p = window.peerPlayers[id];
-                        if (p && Number.isFinite(p.hp) && p.hp <= 0) {
-                            removeDeadPeerMesh(id);
-                        }
-                    });
-                }
-
-                function attachGhostCleanup() {
-                    if (socket && !socket.__ghostCleanupAttached) {
-                        socket.__ghostCleanupAttached = true;
-
-                        socket.on('player_damaged', ({ targetId, hp }) => {
-                            if (targetId && hp <= 0) {
-                                removeDeadPeerMesh(targetId);
-                            }
-                        });
-
-                        socket.on('match_started', () => {
-                            if (window.peerMeshes) {
-                                Object.keys(window.peerMeshes).forEach((id) => {
-                                    const mesh = window.peerMeshes[id];
-                                    if (mesh && mesh.parent) mesh.parent.remove(mesh);
-                                    delete window.peerMeshes[id];
-                                });
-                            }
-                            if (window.peerPlayers) {
-                                Object.keys(window.peerPlayers).forEach((id) => {
-                                    delete window.peerPlayers[id];
-                                });
-                            }
-                        });
-                    }
-                }
-
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', () => {
-                        attachGhostCleanup();
-                        setInterval(cleanupDeadMeshes, 250);
-                    });
-                } else {
-                    attachGhostCleanup();
-                    setInterval(cleanupDeadMeshes, 250);
-                }
-            })();
-        </script>
-    `;
-
-    return html.replace(/<\/body>/i, `${fixScript}</body>`);
-}
-
-app.use((req, res, next) => {
-    if (req.path === '/' || req.path.endsWith('.html')) {
-        const indexPath = path.join(__dirname, 'public', req.path === '/' ? 'index.html' : req.path);
-        fs.readFile(indexPath, 'utf8', (err, html) => {
-            if (err) return next(err);
-            res.setHeader('Content-Type', 'text/html');
-            res.send(addGhostCleanupScript(html));
-        });
-        return;
-    }
-    next();
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -110,16 +22,6 @@ function generateRoomCode() {
     return code;
 }
 
-function resetRoomForNewRound(room) {
-    if (!room) return;
-    room.started = false;
-    room.roundEnded = false;
-    Object.values(room.players).forEach((player) => {
-        player.hp = 100;
-        player.alive = true;
-    });
-}
-
 io.on('connection', (socket) => {
     let currentRoom = null;
 
@@ -131,7 +33,6 @@ io.on('connection', (socket) => {
         rooms[roomCode] = {
             hostId: socket.id,
             started: false,
-            roundEnded: false,
             players: {}
         };
 
@@ -139,8 +40,7 @@ io.on('connection', (socket) => {
             id: socket.id,
             username: username || 'Host Student',
             isHost: true,
-            hp: 100,
-            alive: true,
+            hp: 200,
             x: 0, y: 1.6, z: 4,
             yaw: 0, pitch: 0,
             color: '#3b82f6'
@@ -170,8 +70,7 @@ io.on('connection', (socket) => {
             id: socket.id,
             username: username || `Student_${Math.floor(Math.random() * 1000)}`,
             isHost: false,
-            hp: 100,
-            alive: true,
+            hp: 200,
             x: (Math.random() - 0.5) * 6,
             y: 1.6,
             z: (Math.random() - 0.5) * 6,
@@ -200,20 +99,14 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Start Match / Restart Round
+    // Host Starts Match
     socket.on('start_game', () => {
         const room = rooms[currentRoom];
-        if (!room || !room.players[socket.id]) return;
-
-        if (!room.started) {
+        if (room && room.hostId === socket.id) {
             room.started = true;
-            room.roundEnded = false;
-
             Object.values(room.players).forEach((player) => {
-                player.hp = 100;
-                player.alive = true;
+                player.hp = 200;
             });
-
             io.to(currentRoom).emit('match_started', { players: room.players });
         }
     });
@@ -238,28 +131,12 @@ io.on('connection', (socket) => {
     socket.on('player_hit', ({ targetId, damage }) => {
         const room = rooms[currentRoom];
         if (room && room.players[targetId]) {
-            const target = room.players[targetId];
-            target.hp = Math.max(0, target.hp - damage);
-            target.alive = target.hp > 0;
-
+            room.players[targetId].hp = Math.max(0, room.players[targetId].hp - damage);
             io.to(currentRoom).emit('player_damaged', {
                 targetId,
-                hp: target.hp,
+                hp: room.players[targetId].hp,
                 damage
             });
-
-            if (target.hp <= 0) {
-                const remainingAlive = Object.values(room.players).filter((player) => player.hp > 0);
-                if (remainingAlive.length <= 1) {
-                    room.started = false;
-                    room.roundEnded = true;
-                    io.to(currentRoom).emit('round_ended', {
-                        winnerId: remainingAlive[0] ? remainingAlive[0].id : null,
-                        players: room.players
-                    });
-                    io.to(currentRoom).emit('lobby_update', room);
-                }
-            }
         }
     });
 
