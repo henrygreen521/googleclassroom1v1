@@ -304,7 +304,7 @@
 
             <!-- MULTIPLAYER LOBBY SETUP -->
             <div id="panel-multi" class="w-full hidden flex flex-col items-center">
-                <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500" />
+                <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:border-emerald-500 text-center font-bold" />
                 
                 <div id="multi-actions" class="grid grid-cols-2 gap-2 w-full mb-4">
                     <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">Create Room</button>
@@ -1284,7 +1284,114 @@
             addPushableFurniture(printer, 6, 22.5, 0.8, 0.8, 1.4, 0.8);
         }
 
+        function buildFPVWeapon() {
+            fpvWeaponGroup = new THREE.Group();
+            const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2563eb });
+
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5), sleeveMat);
+            arm.rotation.x = Math.PI / 3;
+            arm.position.set(0.35, -0.3, -0.5);
+            fpvWeaponGroup.add(arm);
+
+            const rulerMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.2 });
+            fpvRulerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.12), rulerMat);
+            fpvRulerMesh.position.set(0.38, -0.1, -0.7);
+            fpvRulerMesh.rotation.x = -Math.PI / 4;
+            fpvWeaponGroup.add(fpvRulerMesh);
+
+            camera.add(fpvWeaponGroup);
+            scene.add(camera);
+        }
+
+        function buildAIFighter() {
+            const aiGroup = new THREE.Group();
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.1, 0.5), bodyMat);
+            torso.position.y = 0.85;
+            torso.castShadow = true;
+            aiGroup.add(torso);
+
+            ai.head = new THREE.Group();
+            ai.head.position.y = 1.6;
+            aiGroup.add(ai.head);
+
+            const headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), skinMat);
+            headMesh.castShadow = true;
+            ai.head.add(headMesh);
+
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const lEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat);
+            lEye.position.set(-0.15, 0.05, -0.31);
+            ai.head.add(lEye);
+
+            const rEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.05), eyeMat);
+            rEye.position.set(0.15, 0.05, -0.31);
+            ai.head.add(rEye);
+
+            ai.rightArm = new THREE.Group();
+            ai.rightArm.position.set(0.5, 1.2, 0);
+
+            const rArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), bodyMat);
+            rArmMesh.position.y = -0.3;
+            ai.rightArm.add(rArmMesh);
+
+            const ruler = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.12), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+            ruler.position.set(0, -0.5, -0.2);
+            ruler.rotation.x = -Math.PI / 4;
+            ai.rightArm.add(ruler);
+
+            aiGroup.add(ai.rightArm);
+            ai.mesh = aiGroup;
+            scene.add(ai.mesh);
+        }
+
+        function checkDoorProximity() {
+            const prompt = document.getElementById('interact-prompt');
+            let nearDoor = null;
+
+            doors.forEach(d => {
+                const dist = player.position.distanceTo(new THREE.Vector3(d.x, EYE_HEIGHT, d.z));
+                if (dist < 2.5) nearDoor = d;
+            });
+
+            if (nearDoor) {
+                prompt.classList.remove('opacity-0');
+            } else {
+                prompt.classList.add('opacity-0');
+            }
+            return nearDoor;
+        }
+
+        function toggleDoor(doorObj) {
+            if (!doorObj) return;
+            doorObj.isOpen = !doorObj.isOpen;
+            doorObj.targetRot = doorObj.isOpen ? doorObj.baseRot + Math.PI / 2 : doorObj.baseRot;
+            soundFX.playDoorSqueak();
+        }
+
         function setupGameEvents() {
+            // Difficulty Button Selectors
+            const diffBtns = {
+                'EASY': document.getElementById('diff-easy'),
+                'MEDIUM': document.getElementById('diff-medium'),
+                'HARD': document.getElementById('diff-hard')
+            };
+
+            Object.keys(diffBtns).forEach(d => {
+                if (diffBtns[d]) {
+                    diffBtns[d].addEventListener('click', () => {
+                        aiDifficulty = d;
+                        Object.keys(diffBtns).forEach(k => {
+                            diffBtns[k].className = k === d ?
+                                "diff-btn py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white shadow-lg transition-all" :
+                                "diff-btn py-2 text-xs font-bold rounded-xl bg-slate-700 text-slate-300 hover:bg-emerald-600 transition-all";
+                        });
+                    });
+                }
+            });
+
             document.addEventListener('click', () => {
                 if (gameState === 'PLAYING' && document.pointerLockElement !== document.body) {
                     document.body.requestPointerLock();
@@ -1375,6 +1482,66 @@
             chalkStatus.classList.toggle('text-yellow-400', player.chalkCooldown > 0);
         }
 
+        function resolveStaticObstacles(pos, radius) {
+            staticObstacles.forEach(obs => {
+                const minX = obs.x - obs.halfWidth;
+                const maxX = obs.x + obs.halfWidth;
+                const minZ = obs.z - obs.halfDepth;
+                const maxZ = obs.z + obs.halfDepth;
+
+                if (pos.x > minX - radius && pos.x < maxX + radius &&
+                    pos.z > minZ - radius && pos.z < maxZ + radius) {
+                    
+                    const dxMin = Math.abs(pos.x - (minX - radius));
+                    const dxMax = Math.abs(pos.x - (maxX + radius));
+                    const dzMin = Math.abs(pos.z - (minZ - radius));
+                    const dzMax = Math.abs(pos.z - (maxZ + radius));
+
+                    const min = Math.min(dxMin, dxMax, dzMin, dzMax);
+
+                    if (min === dxMin) pos.x = minX - radius;
+                    else if (min === dxMax) pos.x = maxX + radius;
+                    else if (min === dzMin) pos.z = minZ - radius;
+                    else if (min === dzMax) pos.z = maxZ + radius;
+                }
+            });
+        }
+
+        function resolveDynamicFurnitureCollisions(entityPos, radius, entityFeet, bodyHeight, previousFeet = entityFeet, canLand = false) {
+            pushableFurniture.forEach(item => {
+                const minX = item.currX - item.halfWidth;
+                const maxX = item.currX + item.halfWidth;
+                const minZ = item.currZ - item.halfDepth;
+                const maxZ = item.currZ + item.halfDepth;
+                const overlapsHorizontally = entityPos.x > minX - radius && entityPos.x < maxX + radius &&
+                    entityPos.z > minZ - radius && entityPos.z < maxZ + radius;
+
+                if (!overlapsHorizontally) return;
+
+                const topY = item.height;
+                if (canLand && entityFeet <= topY && previousFeet >= topY && player.velocity.y <= 0) {
+                    entityPos.y = topY + EYE_HEIGHT;
+                    player.velocity.y = 0;
+                    player.isGrounded = true;
+                    entityFeet = topY;
+                    return;
+                }
+
+                if (entityFeet >= topY || entityFeet + bodyHeight <= 0) return;
+
+                const dxMin = Math.abs(entityPos.x - (minX - radius));
+                const dxMax = Math.abs(entityPos.x - (maxX + radius));
+                const dzMin = Math.abs(entityPos.z - (minZ - radius));
+                const dzMax = Math.abs(entityPos.z - (maxZ + radius));
+                const min = Math.min(dxMin, dxMax, dzMin, dzMax);
+
+                if (min === dxMin) entityPos.x = minX - radius;
+                else if (min === dxMax) entityPos.x = maxX + radius;
+                else if (min === dzMin) entityPos.z = minZ - radius;
+                else if (min === dzMax) entityPos.z = maxZ + radius;
+            });
+        }
+
         function updatePlayerPhysics(delta) {
             const previousFeet = player.position.y - EYE_HEIGHT;
             player.velocity.y += GRAVITY * delta;
@@ -1438,7 +1605,6 @@
 
         function updateDoors(delta) {
             doors.forEach((door) => {
-                const target = door.isOpen ? Math.PI / 2 : 0;
                 const angle = THREE.MathUtils.lerp(door.pivot.rotation.y, door.baseRot + (door.isOpen ? Math.PI / 2 : 0), 1.5 * delta);
                 door.pivot.rotation.y = angle;
             });
@@ -1462,6 +1628,72 @@
                 if (ai.hp <= 0) endGame('YOU WON! CLASS REBEL HAS BEEN DEFEATED!', true);
             }
             updateHUD();
+        }
+
+        function updateSmartAI(delta) {
+            if (gameState !== 'PLAYING' || isMultiplayer) return;
+
+            ai.velocity.y += GRAVITY * delta;
+            ai.position.y += ai.velocity.y * delta;
+
+            if (ai.position.y <= 0) {
+                ai.position.y = 0;
+                ai.velocity.y = 0;
+                ai.isGrounded = true;
+            }
+
+            const playerDist = ai.position.distanceTo(player.position);
+            const dx = player.position.x - ai.position.x;
+            const dz = player.position.z - ai.position.z;
+
+            const targetYaw = Math.atan2(dx, dz) - Math.PI;
+            let diff = targetYaw - ai.yaw;
+            diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+
+            const turnSpeed = aiDifficulty === 'HARD' ? 14.0 : (aiDifficulty === 'MEDIUM' ? 10.0 : 7.5);
+            ai.yaw += diff * Math.min(1.0, turnSpeed * delta);
+            ai.mesh.rotation.y = ai.yaw;
+
+            const speed = aiDifficulty === 'HARD' ? 7.2 : (aiDifficulty === 'MEDIUM' ? 5.8 : 4.8);
+            const forwardDir = new THREE.Vector3(-Math.sin(ai.yaw), 0, -Math.cos(ai.yaw));
+            const aiVel = new THREE.Vector3();
+
+            if (playerDist > 2.6) {
+                aiVel.addScaledVector(forwardDir, speed);
+            } else {
+                if (ai.attackCooldown <= 0) {
+                    triggerAIAttack();
+                }
+            }
+
+            ai.position.addScaledVector(aiVel, delta);
+            ai.position.x = Math.max(-19, Math.min(59, ai.position.x));
+            ai.position.z = Math.max(-9.5, Math.min(31, ai.position.z));
+            ai.mesh.position.copy(ai.position);
+
+            if (ai.attackCooldown > 0) {
+                ai.attackCooldown -= delta;
+            }
+        }
+
+        function triggerAIAttack() {
+            ai.attackCooldown = aiDifficulty === 'HARD' ? 0.45 : (aiDifficulty === 'MEDIUM' ? 0.65 : 0.8);
+            soundFX.playSwing();
+
+            setTimeout(() => {
+                const aiCenterPos = ai.position.clone().add(new THREE.Vector3(0, EYE_HEIGHT, 0));
+                const dist = aiCenterPos.distanceTo(player.position);
+                if (dist <= 3.0 && gameState === 'PLAYING') {
+                    const dmg = aiDifficulty === 'HARD' ? 15 : (aiDifficulty === 'MEDIUM' ? 11 : 9);
+                    player.hp = Math.max(0, player.hp - dmg);
+                    soundFX.playHit();
+                    updateHUD();
+                    showHitPop(player.position, `-${dmg}`);
+                    if (player.hp <= 0) {
+                        endGame("FAILED! SENT TO PRINCIPAL'S OFFICE!", false);
+                    }
+                }
+            }, 100);
         }
 
         function updateHUD() {
@@ -1527,6 +1759,54 @@
             }, 1200);
         }
 
+        function showHitPop(worldPos, text) {
+            const pos = worldPos.clone();
+            pos.project(camera);
+
+            const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+            const elem = document.createElement('div');
+            elem.className = 'hit-pop';
+            elem.innerText = text;
+            elem.style.left = `${x}px`;
+            elem.style.top = `${y}px`;
+            document.body.appendChild(elem);
+
+            setTimeout(() => elem.remove(), 600);
+        }
+
+        function createHitParticles(pos) {
+            for (let i = 0; i < 12; i++) {
+                const p = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.06, 4, 4),
+                    new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+                );
+                p.position.copy(pos);
+                scene.add(p);
+
+                particles.push({
+                    mesh: p,
+                    vel: new THREE.Vector3((Math.random() - 0.5) * 6, Math.random() * 4 + 1, (Math.random() - 0.5) * 6),
+                    life: 0.3
+                });
+            }
+        }
+
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= delta;
+                p.vel.y -= 10 * delta;
+                p.mesh.position.addScaledVector(p.vel, delta);
+
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
         function updateChalkProjectiles(delta) {
             for (let i = chalkProjectiles.length - 1; i >= 0; i--) {
                 const projectile = chalkProjectiles[i];
@@ -1560,6 +1840,7 @@
         bindMobileButtons();
         setupGameEvents();
         syncMobileControls();
+        initScene();
         animate();
     </script>
 </body>
