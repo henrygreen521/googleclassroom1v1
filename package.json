@@ -1,0 +1,13 @@
+{
+  "name": "google-classroom-arena-multiplayer",
+  "version": "1.0.0",
+  "description": "3D Google Classroom FPV Arena with Node.js & Socket.io multiplayer on Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
