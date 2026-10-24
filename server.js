@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
 const { Server } = require('socket.io');
 const path = require('path');
 
@@ -7,6 +8,93 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*" }
+});
+
+function addGhostCleanupScript(html) {
+    const fixScript = `
+        <script>
+            (() => {
+                function removeDeadPeerMesh(id) {
+                    if (window.peerMeshes && window.peerMeshes[id]) {
+                        const mesh = window.peerMeshes[id];
+                        if (mesh && mesh.parent) mesh.parent.remove(mesh);
+                        delete window.peerMeshes[id];
+                    }
+
+                    if (window.peerPlayers && window.peerPlayers[id]) {
+                        const peer = window.peerPlayers[id];
+                        if (peer && peer.mesh && peer.mesh.parent) {
+                            peer.mesh.parent.remove(peer.mesh);
+                            peer.mesh = null;
+                        }
+                        delete window.peerPlayers[id];
+                    }
+                }
+
+                function cleanupDeadMeshes() {
+                    if (!window.peerPlayers) return;
+                    Object.keys(window.peerPlayers).forEach((id) => {
+                        const p = window.peerPlayers[id];
+                        if (p && Number.isFinite(p.hp) && p.hp <= 0) {
+                            removeDeadPeerMesh(id);
+                        }
+                    });
+                }
+
+                function attachGhostCleanup() {
+                    if (socket && !socket.__ghostCleanupAttached) {
+                        socket.__ghostCleanupAttached = true;
+
+                        socket.on('player_damaged', ({ targetId, hp }) => {
+                            if (targetId && hp <= 0) {
+                                removeDeadPeerMesh(targetId);
+                            }
+                        });
+
+                        socket.on('match_started', () => {
+                            if (window.peerMeshes) {
+                                Object.keys(window.peerMeshes).forEach((id) => {
+                                    const mesh = window.peerMeshes[id];
+                                    if (mesh && mesh.parent) mesh.parent.remove(mesh);
+                                    delete window.peerMeshes[id];
+                                });
+                            }
+                            if (window.peerPlayers) {
+                                Object.keys(window.peerPlayers).forEach((id) => {
+                                    delete window.peerPlayers[id];
+                                });
+                            }
+                        });
+                    }
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        attachGhostCleanup();
+                        setInterval(cleanupDeadMeshes, 250);
+                    });
+                } else {
+                    attachGhostCleanup();
+                    setInterval(cleanupDeadMeshes, 250);
+                }
+            })();
+        </script>
+    `;
+
+    return html.replace(/<\/body>/i, `${fixScript}</body>`);
+}
+
+app.use((req, res, next) => {
+    if (req.path === '/' || req.path.endsWith('.html')) {
+        const indexPath = path.join(__dirname, 'public', req.path === '/' ? 'index.html' : req.path);
+        fs.readFile(indexPath, 'utf8', (err, html) => {
+            if (err) return next(err);
+            res.setHeader('Content-Type', 'text/html');
+            res.send(addGhostCleanupScript(html));
+        });
+        return;
+    }
+    next();
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
