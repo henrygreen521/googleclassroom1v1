@@ -179,11 +179,10 @@
         const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0, isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900 };
 
         class SoundFX {
-            constructor() { this.ctx = null; this.lastSlide = 0; }
+            constructor() { this.ctx = null; }
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
             playSwing() { this.playOsc('sine', 420, 70, 0.2, 0.12); }
             playHit() { this.playOsc('square', 180, 40, 0.3, 0.15); }
-            playFurniturePush() { if(performance.now() - this.lastSlide > 110) { this.lastSlide = performance.now(); this.playOsc('sawtooth', 110, 40, 0.08, 0.1); } }
             playDoorSqueak() { this.playOsc('sawtooth', 320, 650, 0.15, 0.22); }
             playJump() { this.playOsc('triangle', 150, 300, 0.25, 0.15); }
             playWin() { [261, 329, 392, 523].forEach((f, i) => setTimeout(() => this.playOsc('triangle', f, f, 0.2, 0.3), i*100)); }
@@ -203,7 +202,7 @@
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
         const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0 };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, mesh: null, head: null };
-        const keys = {}, pushableFurniture = [], staticObstacles = [], doors = [], particles = [], chalkProjectiles = [];
+        const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], particles = [], chalkProjectiles = [];
         let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
 
         // --- MULTIPLAYER UI LOGIC ---
@@ -332,7 +331,7 @@
         }
 
         function addStaticObstacle(x, z, w, d) { staticObstacles.push({ x, z, halfWidth: w, halfDepth: d }); }
-        function addPushableFurniture(mesh, x, z, w, d, topY = 0) { pushableFurniture.push({ mesh, currX: x, currZ: z, halfWidth: w, halfDepth: d, topY }); }
+        function addFurnitureSurface(x, z, w, d, topY = 0) { furnitureSurfaces.push({ x, z, halfWidth: w, halfDepth: d, topY }); }
         
         function createDoor(x, z, rotY, doorId) {
             const doorPivot = new THREE.Group(); doorPivot.position.set(x, 0, z); doorPivot.rotation.y = rotY;
@@ -352,7 +351,7 @@
                 if (isPeer) continue;
                 scene.remove(obj);
             }
-            pushableFurniture.length = 0; staticObstacles.length = 0; doors.length = 0;
+            furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0;
 
             const cCount = settings.classrooms; const fCount = settings.cafeterias;
             const slotSize = 30; const totalSlots = Math.max(cCount, fCount) || 1;
@@ -418,7 +417,7 @@
                 const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; grp.add(top);
                 const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.3);
                 [ {lx:-0.9, lz:-0.5}, {lx:0.9, lz:-0.5}, {lx:-0.9, lz:0.5}, {lx:0.9, lz:0.5} ].forEach(l => { const leg = new THREE.Mesh(legGeo, metalMat); leg.position.set(l.lx, 0.65, l.lz); leg.castShadow = true; grp.add(leg); });
-                scene.add(grp); addPushableFurniture(grp, x + p.dx, z + p.dz, 1.1, 1.25, 1.3);
+                scene.add(grp); addFurnitureSurface(x + p.dx, z + p.dz, 1.1, 1.25, 1.3);
             });
         }
 
@@ -441,7 +440,7 @@
                     const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
                     const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.45); benchA.castShadow=true; table.add(benchA);
                     const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.45); benchB.castShadow=true; table.add(benchB);
-                    scene.add(table); addPushableFurniture(table, x + tx, z + tz, 1.5, 1.2, 1.2);
+                    scene.add(table); addFurnitureSurface(x + tx, z + tz, 1.5, 1.2, 1.2);
                 }
             }
 
@@ -591,8 +590,8 @@
                 if (keys['w']) moveVec.z -= 1; if (keys['s']) moveVec.z += 1; if (keys['a']) moveVec.x -= 1; if (keys['d']) moveVec.x += 1; moveVec.normalize();
                 let speed = moveVec.length() > 0 ? 8.0 : 0;
                 let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * speed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * speed);
-                player.position.addScaledVector(wishVel, delta); player.position.y += player.velocity.y * delta;
-                if (player.position.y <= EYE_HEIGHT) { player.position.y = EYE_HEIGHT; player.velocity.y = 0; player.isGrounded = true; }
+                player.position.addScaledVector(wishVel, delta);
+                player.position.y += player.velocity.y * delta;
 
                 player.position.x = Math.max(worldBounds.minX + PLAYER_RADIUS, Math.min(worldBounds.maxX - PLAYER_RADIUS, player.position.x));
                 player.position.z = Math.max(worldBounds.minZ + PLAYER_RADIUS, Math.min(worldBounds.maxZ - PLAYER_RADIUS, player.position.z));
@@ -604,24 +603,28 @@
                         if (ox < oz) player.position.x += Math.sign(dx) * ox; else player.position.z += Math.sign(dz) * oz;
                     }
                 });
-                pushableFurniture.forEach(f => {
+
+                let groundedOnSurface = null;
+                furnitureSurfaces.forEach(f => {
+                    const dx = Math.abs(player.position.x - f.x);
+                    const dz = Math.abs(player.position.z - f.z);
+                    const withinFootprint = dx <= f.halfWidth + 0.15 && dz <= f.halfDepth + 0.15;
                     const feetY = player.position.y - EYE_HEIGHT;
-                    const standingOnTop = f.topY > 0 && feetY >= f.topY - 0.25 && feetY <= f.topY + 0.25 && player.velocity.y <= 0.05;
-                    if (standingOnTop) {
-                        player.position.y = f.topY + EYE_HEIGHT;
-                        player.velocity.y = 0;
-                        player.isGrounded = true;
-                        return;
-                    }
-                    let dx = player.position.x - f.currX, dz = player.position.z - f.currZ;
-                    if (Math.abs(dx) < f.halfWidth + PLAYER_RADIUS && Math.abs(dz) < f.halfDepth + PLAYER_RADIUS) {
-                        let ox = (f.halfWidth + PLAYER_RADIUS) - Math.abs(dx), oz = (f.halfDepth + PLAYER_RADIUS) - Math.abs(dz);
-                        if (ox < oz) { f.currX -= Math.sign(dx)*ox*0.5; player.position.x += Math.sign(dx)*ox*0.5; } 
-                        else { f.currZ -= Math.sign(dz)*oz*0.5; player.position.z += Math.sign(dz)*oz*0.5; }
-                        soundFX.playFurniturePush();
-                    }
-                    f.mesh.position.set(f.currX, 0, f.currZ);
+                    const aboveSurface = feetY >= f.topY - 0.2 && feetY <= f.topY + 0.65 && player.velocity.y <= 0.1;
+                    if (withinFootprint && aboveSurface) groundedOnSurface = f;
                 });
+
+                if (groundedOnSurface) {
+                    player.position.y = groundedOnSurface.topY + EYE_HEIGHT;
+                    player.velocity.y = 0;
+                    player.isGrounded = true;
+                } else if (player.position.y <= EYE_HEIGHT) {
+                    player.position.y = EYE_HEIGHT;
+                    player.velocity.y = 0;
+                    player.isGrounded = true;
+                } else {
+                    player.isGrounded = false;
+                }
 
                 camera.position.copy(player.position); camera.rotation.set(player.pitch, player.yaw, 0);
                 document.getElementById('location-badge').innerText = player.position.z > 12 ? '🍕 CAFETERIA HALL' : '📚 CLASSROOMS';
