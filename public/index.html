@@ -88,22 +88,22 @@
         </div>
 
         <div class="self-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-md text-xs text-slate-300 pointer-events-auto text-center hidden md:block">
-            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>E/X:</b> Doors | <b>L-Click/LT:</b> Attack | <b>Q/LT:</b> Chalk</span>
+            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>E/X:</b> Doors | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
             <div id="chalk-status" class="mt-1 font-bold text-emerald-400">Chalk: READY</div>
         </div>
     </div>
 
     <!-- Main Menu -->
     <div id="main-menu" class="absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
-        <div class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-emerald-500 text-center flex flex-col items-center my-auto">
+        <div id="main-content-box" class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-emerald-500 text-center flex flex-col items-center my-auto transition-all">
             
             <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-2 border-yellow-400 mb-3 shadow-lg">🍕</div>
             <h1 class="text-2xl font-black text-white tracking-tight">Google Classroom Arena</h1>
             <p class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4">Procedural Edition</p>
 
             <div class="grid grid-cols-2 gap-2 w-full mb-4">
-                <button id="tab-single" class="py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white shadow-lg">Single Player (AI)</button>
-                <button id="tab-multi" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700">Online Multiplayer</button>
+                <button id="tab-single" class="py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white shadow-lg transition-colors">Single Player (AI)</button>
+                <button id="tab-multi" class="py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Online Multiplayer</button>
             </div>
 
             <div id="map-settings" class="w-full bg-slate-800/80 p-4 rounded-xl border border-slate-700 mb-4 text-left">
@@ -128,14 +128,14 @@
                 <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 
                 <div id="multi-actions" class="grid grid-cols-2 gap-2 w-full mb-4">
-                    <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs">Create Room</button>
-                    <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs">Join Room</button>
+                    <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors">Create Room</button>
+                    <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">Join Room</button>
                 </div>
 
                 <div id="join-box" class="w-full hidden mb-4">
                     <div class="flex gap-2">
                         <input id="input-room-code" type="text" placeholder="Code" maxlength="4" class="w-2/3 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center pixel-font uppercase tracking-[0.4em]">
-                        <button id="btn-join-room" class="w-1/3 bg-emerald-600 text-white font-bold rounded-xl text-xs">JOIN</button>
+                        <button id="btn-join-room" class="w-1/3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors">JOIN</button>
                     </div>
                 </div>
 
@@ -146,10 +146,32 @@
                     </div>
                     <p class="text-[11px] font-bold text-slate-400 mb-2 uppercase">Students in Lobby:</p>
                     <div id="player-list" class="space-y-2 mb-4 max-h-36 overflow-y-auto pr-1"></div>
-                    <button id="btn-host-start" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm hidden shadow-lg">🚀 START MATCH</button>
+                    <button id="btn-host-start" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm hidden shadow-lg transition-colors">🚀 START MATCH</button>
                     <p id="waiting-msg" class="text-xs text-yellow-400 font-bold text-center italic hidden">Waiting for host to start...</p>
                 </div>
             </div>
+            
+            <button id="btn-open-settings" class="mt-5 text-xs text-slate-400 hover:text-white transition-colors uppercase tracking-wider font-bold">⚙️ Settings</button>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-box" class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-slate-600 text-center flex flex-col items-center my-auto hidden">
+            <h2 class="text-xl font-black text-white tracking-tight mb-6">Settings</h2>
+            
+            <div class="w-full bg-slate-800/80 p-4 rounded-xl border border-slate-700 mb-4 text-left">
+                <div class="mb-5">
+                    <div class="flex justify-between text-xs font-bold mb-2"><span>Look Sensitivity</span><span id="lbl-sens" class="text-emerald-400">1.0</span></div>
+                    <input type="range" id="set-sens" min="0.1" max="3.0" step="0.1" value="1.0" oninput="document.getElementById('lbl-sens').innerText = this.value">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs font-bold mb-2"><span>Master Volume</span><span id="lbl-vol" class="text-emerald-400">100%</span></div>
+                    <input type="range" id="set-vol" min="0" max="100" value="100" oninput="document.getElementById('lbl-vol').innerText = this.value + '%'">
+                </div>
+            </div>
+
+            <button id="btn-close-settings" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors mt-2">
+                Back to Menu
+            </button>
         </div>
     </div>
 
@@ -176,6 +198,7 @@
         let peerPlayers = {}, peerMeshes = {};
         
         let currentMapSettings = { classrooms: 1, cafeterias: 1 };
+        let userSettings = { sensitivity: 1.0, volume: 1.0 }; // Global Settings state
         const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0, isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900 };
 
         class SoundFX {
@@ -191,7 +214,12 @@
                 if (!this.ctx) return;
                 const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
                 osc.type = type; osc.frequency.setValueAtTime(f1, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + t);
-                gain.gain.setValueAtTime(v, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + t);
+                
+                // Apply global volume setting from sliders
+                let finalVol = v * userSettings.volume;
+                if (finalVol <= 0) return;
+
+                gain.gain.setValueAtTime(finalVol, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + t);
                 osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + t);
             }
         }
@@ -201,12 +229,15 @@
         let fpvWeaponGroup, fpvRulerMesh;
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
         const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0 };
-        const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevA: false, prevX: false };
+        const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false, prevX: false };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, mesh: null, head: null };
         const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], particles = [], chalkProjectiles = [];
         let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
 
-        // --- MULTIPLAYER UI LOGIC ---
+        // --- GLOBAL TEXTURE LOADER FOR CUSTOM FLOOR TILE ---
+        let floorTileTexture = null;
+
+        // --- UI LOGIC ---
         document.getElementById('tab-single').onclick = () => {
             isMultiplayer = false;
             document.getElementById('panel-single').classList.remove('hidden'); document.getElementById('panel-multi').classList.add('hidden');
@@ -236,6 +267,19 @@
         };
         document.getElementById('btn-host-start').onclick = () => socket.emit('start_game');
 
+        // Settings Menu Nav
+        document.getElementById('btn-open-settings').onclick = () => {
+            document.getElementById('main-content-box').classList.add('hidden');
+            document.getElementById('settings-box').classList.remove('hidden');
+        };
+        document.getElementById('btn-close-settings').onclick = () => {
+            userSettings.sensitivity = parseFloat(document.getElementById('set-sens').value);
+            userSettings.volume = parseInt(document.getElementById('set-vol').value) / 100;
+            document.getElementById('settings-box').classList.add('hidden');
+            document.getElementById('main-content-box').classList.remove('hidden');
+        };
+
+        // Socket logic
         socket.on('room_created', (data) => { activeRoomCode = data.roomCode; myPlayerId = data.playerId; isHost = true; currentMapSettings = data.settings; });
         socket.on('room_joined', (data) => { activeRoomCode = data.roomCode; myPlayerId = data.playerId; isHost = false; currentMapSettings = data.settings; });
         socket.on('lobby_update', (room) => {
@@ -285,6 +329,12 @@
             dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50; dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
             scene.add(dirLight);
 
+            // Load Custom Image Texture
+            floorTileTexture = new THREE.TextureLoader().load('floor_tile.jpg');
+            floorTileTexture.wrapS = THREE.RepeatWrapping;
+            floorTileTexture.wrapT = THREE.RepeatWrapping;
+            floorTileTexture.encoding = THREE.sRGBEncoding; 
+
             buildFPVWeapon();
             buildAIFighter();
         }
@@ -324,13 +374,6 @@
             return new THREE.CanvasTexture(canvas);
         }
 
-        function createTileTexture(color1 = '#cbd5e1', color2 = '#94a3b8') {
-            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = color1; ctx.fillRect(0, 0, 512, 512); ctx.strokeStyle = color2; ctx.lineWidth = 4;
-            for (let i = 0; i <= 512; i += 64) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke(); }
-            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
-        }
-
         function addStaticObstacle(x, z, w, d) { staticObstacles.push({ x, z, halfWidth: w, halfDepth: d }); }
         function addFurnitureSurface(x, z, w, d, topY = 0) { furnitureSurfaces.push({ x, z, halfWidth: w, halfDepth: d, topY }); }
         
@@ -361,10 +404,14 @@
             worldBounds = { minX: -15, maxX: hallLength - 15, minZ: -10, maxZ: 45.5 };
 
             const hallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.6 });
-            const tileTex = createTileTexture(); tileTex.repeat.set(hallLength/4, 2);
             
-            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.3, metalness: 0.1 }));
+            // Re-using the custom texture, setting repeat size based on floor dimensions
+            const tMap = floorTileTexture.clone(); tMap.needsUpdate = true;
+            tMap.repeat.set(hallLength / 4, 3);
+            
+            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: tMap, roughness: 0.7, metalness: 0.1 }));
             hallFloor.position.set(centerX, 0, 12.5); hallFloor.rotation.x = -Math.PI / 2; hallFloor.receiveShadow = true; scene.add(hallFloor);
+            
             const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
             hallCeil.position.set(centerX, 5, 12.5); hallCeil.rotation.x = Math.PI / 2; scene.add(hallCeil);
 
@@ -399,9 +446,13 @@
 
         function buildClassroom(x, z, idx) {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 });
-            const tex = createTileTexture(); tex.repeat.set(6, 5);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }));
+            
+            const cMap = floorTileTexture.clone(); cMap.needsUpdate = true;
+            cMap.repeat.set(8, 6);
+            
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: cMap, roughness: 0.7 }));
             floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            
             const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
             ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
 
@@ -418,15 +469,19 @@
                 const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; grp.add(top);
                 const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.3);
                 [ {lx:-0.9, lz:-0.5}, {lx:0.9, lz:-0.5}, {lx:-0.9, lz:0.5}, {lx:0.9, lz:0.5} ].forEach(l => { const leg = new THREE.Mesh(legGeo, metalMat); leg.position.set(l.lx, 0.65, l.lz); leg.castShadow = true; grp.add(leg); });
-                scene.add(grp); addFurnitureSurface(x + p.dx, z + p.dz, 1.1, 1.25, 1.3);
+                scene.add(grp); addFurnitureSurface(x + p.dx, z + p.dz, 1.1, 0.7, 1.3);
             });
         }
 
         function buildCafeteria(x, z, idx) {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.8 });
-            const tex = createTileTexture('#fef08a', '#eab308'); tex.repeat.set(6, 6);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4 }));
+            
+            const fMap = floorTileTexture.clone(); fMap.needsUpdate = true;
+            fMap.repeat.set(10, 12);
+
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: fMap, roughness: 0.6 }));
             floor.position.set(x, 0, z + 5.5); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            
             const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
             ceil.position.set(x, 6, z + 5.5); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
 
@@ -441,7 +496,7 @@
                     const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
                     const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.45); benchA.castShadow=true; table.add(benchA);
                     const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.45); benchB.castShadow=true; table.add(benchB);
-                    scene.add(table); addFurnitureSurface(x + tx, z + tz, 1.5, 1.2, 1.2);
+                    scene.add(table); addFurnitureSurface(x + tx, z + tz, 1.4, 1.1, 1.2);
                 }
             }
 
@@ -453,58 +508,38 @@
         function updateGamepad() {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
-            for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) { gp = gamepads[i]; break; }
-            }
-            if (!gp) {
-                controllerState.moveX = 0;
-                controllerState.moveY = 0;
-                return;
-            }
+            for (let i = 0; i < gamepads.length; i++) { if (gamepads[i]) { gp = gamepads[i]; break; } }
+            if (!gp) { controllerState.moveX = 0; controllerState.moveY = 0; return; }
 
             const deadzone = 0.15;
-            let lx = gp.axes[0] || 0;
-            let ly = gp.axes[1] || 0;
-            if (Math.abs(lx) < deadzone) lx = 0;
-            if (Math.abs(ly) < deadzone) ly = 0;
+            let lx = gp.axes[0] || 0; let ly = gp.axes[1] || 0;
+            if (Math.abs(lx) < deadzone) lx = 0; if (Math.abs(ly) < deadzone) ly = 0;
+            controllerState.moveX = lx; controllerState.moveY = ly;
 
-            controllerState.moveX = lx;
-            controllerState.moveY = ly;
-
-            let rx = gp.axes[2] || 0;
-            let ry = gp.axes[3] || 0;
-            if (Math.abs(rx) < deadzone) rx = 0;
-            if (Math.abs(ry) < deadzone) ry = 0;
-
-            if (gameState === 'PLAYING') {
-                player.yaw -= rx * 0.035;
-                player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - ry * 0.035));
+            let rx = gp.axes[2] || 0; let ry = gp.axes[3] || 0;
+            if (Math.abs(rx) < deadzone) rx = 0; if (Math.abs(ry) < deadzone) ry = 0;
+            
+            if (gameState === 'PLAYING') { 
+                player.yaw -= rx * 0.035 * userSettings.sensitivity; 
+                player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (ry * 0.035 * userSettings.sensitivity))); 
             }
 
-            let ltValue = 0;
-            if (gp.buttons[6]) {
-                ltValue = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : gp.buttons[6];
-            }
+            let ltValue = 0; if (gp.buttons[6]) { ltValue = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : gp.buttons[6]; }
             const ltPressed = ltValue > 0.2;
-            if (ltPressed && !controllerState.prevLT) {
-                triggerPlayerAttack();
-                shootChalk();
-            }
+            if (ltPressed && !controllerState.prevLT) triggerPlayerAttack();
             controllerState.prevLT = ltPressed;
 
+            let rtValue = 0; if (gp.buttons[7]) { rtValue = typeof gp.buttons[7] === 'object' ? gp.buttons[7].value : gp.buttons[7]; }
+            const rtPressed = rtValue > 0.2;
+            if (rtPressed && !controllerState.prevRT) shootChalk();
+            controllerState.prevRT = rtPressed;
+
             const buttonA = gp.buttons[0] && gp.buttons[0].pressed;
-            if (buttonA && !controllerState.prevA && player.isGrounded && gameState === 'PLAYING') {
-                player.velocity.y = JUMP_STRENGTH;
-                player.isGrounded = false;
-                soundFX.playJump();
-            }
+            if (buttonA && !controllerState.prevA && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
             controllerState.prevA = buttonA;
 
             const buttonX = gp.buttons[2] && gp.buttons[2].pressed;
-            if (buttonX && !controllerState.prevX && gameState === 'PLAYING') {
-                let d = checkDoorProximity();
-                if (d) toggleDoor(d);
-            }
+            if (buttonX && !controllerState.prevX && gameState === 'PLAYING') { let d = checkDoorProximity(); if (d) toggleDoor(d); }
             controllerState.prevX = buttonX;
         }
 
@@ -536,11 +571,7 @@
         function shootChalk() {
             if (player.chalkCooldown > 0 || gameState !== 'PLAYING') return;
             player.chalkCooldown = 10; document.getElementById('chalk-status').innerText = 'Chalk: RECHARGING';
-            const dir = new THREE.Vector3(
-                -Math.sin(player.yaw) * Math.cos(player.pitch),
-                Math.sin(player.pitch),
-                -Math.cos(player.yaw) * Math.cos(player.pitch)
-            ).normalize();
+            const dir = new THREE.Vector3( -Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch) ).normalize();
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 }));
             mesh.position.copy(player.position).add(new THREE.Vector3(0, 0.15, 0)); scene.add(mesh);
             chalkProjectiles.push({ mesh, velocity: dir.multiplyScalar(16), life: 1.8 });
@@ -619,7 +650,8 @@
                 });
                 lpad.addEventListener('pointermove', (e) => {
                     if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING') return;
-                    player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035));
+                    player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035 * userSettings.sensitivity; 
+                    player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035 * userSettings.sensitivity));
                     mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY;
                 });
                 const elook = (e) => { if (mobileState.lookPointerId === e.pointerId) { mobileState.lookPointerId = null; lpad.classList.remove('active'); } };
@@ -628,7 +660,10 @@
         }
 
         document.addEventListener('click', () => { if (gameState==='PLAYING' && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); });
-        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX*0.0022; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - e.movementY*0.0018)); } });
+        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { 
+            player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; 
+            player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); 
+        } });
         document.addEventListener('mousedown', (e) => { if(document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
@@ -666,6 +701,7 @@
                 player.position.x = Math.max(worldBounds.minX + PLAYER_RADIUS, Math.min(worldBounds.maxX - PLAYER_RADIUS, player.position.x));
                 player.position.z = Math.max(worldBounds.minZ + PLAYER_RADIUS, Math.min(worldBounds.maxZ - PLAYER_RADIUS, player.position.z));
 
+                // 1. HORIZONTAL COLLISIONS (Walls)
                 staticObstacles.forEach(obs => {
                     let dx = player.position.x - obs.x, dz = player.position.z - obs.z;
                     if (Math.abs(dx) < obs.halfWidth + PLAYER_RADIUS && Math.abs(dz) < obs.halfDepth + PLAYER_RADIUS) {
@@ -674,13 +710,27 @@
                     }
                 });
 
+                let feetY = player.position.y - EYE_HEIGHT;
+
+                // 2. HORIZONTAL COLLISIONS (Furniture) -> Solid wall when below the top
+                furnitureSurfaces.forEach(f => {
+                    if (feetY < f.topY - 0.1) {
+                        let dx = player.position.x - f.x, dz = player.position.z - f.z;
+                        if (Math.abs(dx) < f.halfWidth + PLAYER_RADIUS && Math.abs(dz) < f.halfDepth + PLAYER_RADIUS) {
+                            let ox = (f.halfWidth + PLAYER_RADIUS) - Math.abs(dx), oz = (f.halfDepth + PLAYER_RADIUS) - Math.abs(dz);
+                            if (ox < oz) player.position.x += Math.sign(dx) * ox; else player.position.z += Math.sign(dz) * oz;
+                        }
+                    }
+                });
+
+                // 3. VERTICAL COLLISIONS (Jumping/Landing on Furniture)
                 let groundedOnSurface = null;
                 furnitureSurfaces.forEach(f => {
                     const dx = Math.abs(player.position.x - f.x);
                     const dz = Math.abs(player.position.z - f.z);
-                    const withinFootprint = dx <= f.halfWidth + 0.15 && dz <= f.halfDepth + 0.15;
-                    const feetY = player.position.y - EYE_HEIGHT;
-                    const aboveSurface = feetY >= f.topY - 0.2 && feetY <= f.topY + 0.65 && player.velocity.y <= 0.1;
+                    const withinFootprint = dx <= f.halfWidth + PLAYER_RADIUS && dz <= f.halfDepth + PLAYER_RADIUS;
+                    
+                    const aboveSurface = feetY >= f.topY - 0.25 && feetY <= f.topY + 0.65 && player.velocity.y <= 0.1;
                     if (withinFootprint && aboveSurface) groundedOnSurface = f;
                 });
 
