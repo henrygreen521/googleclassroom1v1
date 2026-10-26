@@ -49,6 +49,91 @@
         .look-pad { position: absolute; right: 18px; bottom: 216px; width: 150px; height: 150px; border-radius: 50%; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(15, 23, 42, 0.18); box-shadow: inset 0 0 25px rgba(15, 23, 42, 0.25); pointer-events: auto; touch-action: none; }
         .look-pad::before { content: "LOOK"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.18em; color: rgba(255,255,255,0.7); }
         @media (min-width: 901px) { .mobile-controls { display: none !important; } }
+
+        /* Computer Interactive Overlay / Bezel Framing */
+        #computer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 8, 15, 0.82);
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease-in-out;
+        }
+        #computer-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .monitor-bezel {
+            position: relative;
+            background: #1e293b;
+            padding: 24px 24px 36px 24px;
+            border-radius: 18px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.15);
+            border: 4px solid #334155;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .monitor-screen-container {
+            width: 76vw;
+            height: 72vh;
+            max-width: 950px;
+            max-height: 600px;
+            background: #000;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 3px solid #0f172a;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
+            position: relative;
+        }
+        #computer-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+        .monitor-stand-neck {
+            width: 80px;
+            height: 35px;
+            background: linear-gradient(to bottom, #334155, #1e293b);
+            margin-top: -2px;
+            border-left: 2px solid #475569;
+            border-right: 2px solid #475569;
+        }
+        .monitor-stand-base {
+            width: 220px;
+            height: 14px;
+            background: #334155;
+            border-radius: 7px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+        .monitor-power-led {
+            position: absolute;
+            bottom: 12px;
+            right: 28px;
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+        }
+        .monitor-hud-hint {
+            position: absolute;
+            top: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #facc15;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="relative">
@@ -57,6 +142,19 @@
     <div id="crosshair" class="crosshair hidden"><div class="crosshair-line ch-h"></div><div class="crosshair-line ch-v"></div><div class="crosshair-line ch-dot"></div></div>
     <div id="hurt-overlay" class="absolute inset-0 bg-red-600/40 pointer-events-none opacity-0 z-20 transition-opacity duration-200"></div>
     <div id="toast-container"></div>
+
+    <!-- Computer Interactive Screen Overlay -->
+    <div id="computer-overlay">
+        <div class="monitor-hud-hint">🖥️ COMPUTER ACTIVE — Press <b>Backspace</b> to Exit</div>
+        <div class="monitor-bezel">
+            <div class="monitor-screen-container">
+                <iframe id="computer-iframe"></iframe>
+                <div class="monitor-power-led"></div>
+            </div>
+            <div class="monitor-stand-neck"></div>
+            <div class="monitor-stand-base"></div>
+        </div>
+    </div>
 
     <!-- Active Player UI -->
     <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-30 opacity-0 transition-opacity duration-300">
@@ -84,7 +182,7 @@
             <div id="announcer-text" class="pixel-font text-2xl md:text-4xl text-yellow-300 text-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] transition-transform duration-300 transform scale-0">CLASS IS IN SESSION!</div>
         </div>
         <div class="self-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-md text-xs text-slate-300 pointer-events-auto text-center hidden md:block">
-            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Shift:</b> Sprint (7s/7s) | <b>Space/A:</b> Jump | <b>Push Doors Open!</b> | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
+            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Shift:</b> Sprint (7s/7s) | <b>Space/A:</b> Jump | <b>Double-Click PCs:</b> Open Game | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
             <div class="flex justify-center gap-4 mt-1">
                 <div id="chalk-status" class="font-bold text-emerald-400">Chalk: READY</div>
                 <div id="sprint-status" class="font-bold text-blue-400">Sprint: 100%</div>
@@ -208,6 +306,9 @@
         
         let userSettings = { sensitivity: 1.0, volume: 1.0, performance: false }; 
         const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0, isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900 };
+        
+        let isComputerActive = false;
+        const interactiveComputers = []; // Tracks monitor mesh references for raycasting
 
         class SoundFX {
             constructor() { this.ctx = null; }
@@ -502,7 +603,7 @@
                 let isPeer = false; Object.values(peerMeshes).forEach(pm => { if (pm.group === obj) isPeer = true; }); if (isPeer) continue;
                 scene.remove(obj);
             }
-            furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0;
+            furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0; interactiveComputers.length = 0;
 
             const cCount = settings.classrooms || 1; const bCount = settings.bathrooms || 0; const pCount = settings.computers || 0; const fCount = settings.cafeterias || 1;
             
@@ -643,6 +744,14 @@
                     const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); dGrp.add(monitor);
                     const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); dGrp.add(screen);
                     const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.15), pcMat); base.position.set(c, 1.4, -0.65); dGrp.add(base);
+
+                    // Track screen mesh for double-click computer interactions
+                    screen.userData = { isComputerScreen: true };
+                    interactiveComputers.push(screen);
+
+                    dGrp.add(monitor);
+                    dGrp.add(screen);
+                    dGrp.add(base);
                 }
                 grp.add(dGrp); regSurf(grp, 0, rz, 8, 1.25, 1.2);
             });
@@ -673,7 +782,7 @@
 
         // --- GAMEPLAY LOGIC ---
         function updateGamepad() {
-            if (player.isSpectator) return;
+            if (player.isSpectator || isComputerActive) return;
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null; for (let i = 0; i < gamepads.length; i++) { if (gamepads[i]) { gp = gamepads[i]; break; } }
             if (!gp) { controllerState.moveX = 0; controllerState.moveY = 0; return; }
@@ -694,7 +803,7 @@
         }
 
         function triggerPlayerAttack() {
-            if (player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
+            if (isComputerActive || player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
             player.attackCooldown = 0.45; soundFX.playSwing();
             const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
             const hitPos = player.position.clone().add(new THREE.Vector3(0, 0.3, 0)).add(forward.clone().multiplyScalar(1.8));
@@ -713,7 +822,7 @@
         }
 
         function shootChalk() {
-            if (player.chalkCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
+            if (isComputerActive || player.chalkCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
             player.chalkCooldown = 2.0; document.getElementById('chalk-status').innerText = 'Chalk: RECHARGING';
             const dir = new THREE.Vector3( -Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch) ).normalize();
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 }));
@@ -734,7 +843,6 @@
             document.getElementById('p1-hp').style.width = `${(player.hp / player.maxHp) * 100}%`; document.getElementById('p1-hp-text').innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
             if (!isMultiplayer) { document.getElementById('ai-hp').style.width = `${(ai.hp / ai.maxHp) * 100}%`; document.getElementById('ai-hp-text').innerText = `${Math.ceil(ai.hp)} / ${ai.maxHp}`; }
             
-            // Update Sprint UI Status
             const sprintStatus = document.getElementById('sprint-status');
             if (sprintStatus) {
                 if (player.exhausted) {
@@ -794,7 +902,7 @@
         // --- MOBILE CONTROLS & EVENTS ---
         function syncMobileControls() {
             const c = document.getElementById('mobile-controls');
-            if (c) c.classList.toggle('show', mobileState.isTouch && gameState === 'PLAYING');
+            if (c) c.classList.toggle('show', mobileState.isTouch && gameState === 'PLAYING' && !isComputerActive);
         }
 
         function bindMobileButtons() {
@@ -817,10 +925,10 @@
             const lpad = document.getElementById('mobile-look-pad');
             if(lpad) {
                 lpad.addEventListener('pointerdown', (e) => {
-                    if (gameState !== 'PLAYING') return; mobileState.lookPointerId = e.pointerId; mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY; lpad.classList.add('active');
+                    if (gameState !== 'PLAYING' || isComputerActive) return; mobileState.lookPointerId = e.pointerId; mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY; lpad.classList.add('active');
                 });
                 lpad.addEventListener('pointermove', (e) => {
-                    if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING') return;
+                    if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING' || isComputerActive) return;
                     player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035 * userSettings.sensitivity));
                     mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY;
                 });
@@ -835,13 +943,161 @@
             if (validTargets.length > 0) spectatorIndex = (spectatorIndex + 1) % validTargets.length;
         }
 
+        // --- COMPUTER INTERACTION DOUBLE-CLICK RAYCASTER ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('dblclick', (e) => {
+            if (gameState !== 'PLAYING' || isComputerActive) return;
+
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(interactiveComputers, false);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                const distance = player.position.distanceTo(hit.point);
+                // Check if player is close enough to interact (within 4 units)
+                if (distance <= 4.0) {
+                    openComputerTerminal();
+                } else {
+                    showToast("🖥️ Get closer to the computer to use it!");
+                }
+            }
+        });
+
+        const flashGameHtmlTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>really cool flash game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+    #flash-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: black;
+      overflow: hidden;
+    }
+    .black-box {
+      position: fixed;
+      background: black;
+      z-index: 10;
+    }
+    #box-top { top: 0; left: 0; width: 100%; height: 0; }
+    #box-bottom { bottom: 0; left: 0; width: 100%; height: 0; }
+    #box-left { top: 0; left: 0; width: 0; height: 100%; }
+    #box-right { top: 0; right: 0; width: 0; height: 100%; }
+    ruffle-player {
+      width: 100%;
+      height: 100%;
+      background: black;
+      display: block;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.2.0-nightly.2025.10.2/ruffle.min.js"><\/script>
+</head>
+<body>
+  <div id="flash-container"></div>
+  <div class="black-box" id="box-top"></div>
+  <div class="black-box" id="box-bottom"></div>
+  <div class="black-box" id="box-left"></div>
+  <div class="black-box" id="box-right"></div>
+  <script>
+    const container = document.getElementById("flash-container");
+    const boxTop = document.getElementById("box-top");
+    const boxBottom = document.getElementById("box-bottom");
+    const boxLeft = document.getElementById("box-left");
+    const boxRight = document.getElementById("box-right");
+    function resizeGame() {
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      const aspectRatio = 5.5 / 3;
+      let width = Math.floor(windowWidth * 1);
+      let height = Math.floor(width / aspectRatio);
+      if (height > windowHeight * 1) {
+        height = Math.floor(windowHeight * 1);
+        width = Math.floor(height * aspectRatio);
+      }
+      container.style.width = \`\${width}px\`;
+      container.style.height = \`\${height}px\`;
+      const topMargin = (windowHeight - height) / 2;
+      const leftMargin = (windowWidth - width) / 2;
+      boxTop.style.height = \`\${topMargin}px\`;
+      boxBottom.style.height = \`\${topMargin}px\`;
+      boxLeft.style.width = \`\${leftMargin}px\`;
+      boxRight.style.width = \`\${leftMargin}px\`;
+    }
+    window.addEventListener("resize", resizeGame);
+    window.addEventListener("DOMContentLoaded", () => {
+      resizeGame();
+      const ruffle = window.RufflePlayer?.newest() || window.RufflePlayer?.createPlayer();
+      if (ruffle && container) {
+        const player = ruffle.createPlayer();
+        player.style.width = "100%";
+        player.style.height = "100%";
+        player.style.background = "black";
+        container.appendChild(player);
+        player.load("https://cdn.jsdelivr.net/gh/RobiFet/CMinterview@a4017231eca9f2173ad7ec0e63b01e4786b4ad6b/web/src/BiWrath.swf");
+      } else {
+        container.textContent = "Ruffle failed to load.";
+      }
+    });
+  <\/script>
+</body>
+</html>`;
+
+        function openComputerTerminal() {
+            isComputerActive = true;
+            document.body.exitPointerLock?.();
+            const overlay = document.getElementById('computer-overlay');
+            const iframe = document.getElementById('computer-iframe');
+            
+            // Inject user-provided HTML into the iframe via srcdoc
+            iframe.srcdoc = flashGameHtmlTemplate;
+            overlay.classList.add('active');
+            syncMobileControls();
+        }
+
+        function closeComputerTerminal() {
+            if (!isComputerActive) return;
+            isComputerActive = false;
+            const overlay = document.getElementById('computer-overlay');
+            const iframe = document.getElementById('computer-iframe');
+            overlay.classList.remove('active');
+            iframe.srcdoc = ""; // Clear content
+            syncMobileControls();
+            if (!mobileState.isTouch) document.body.requestPointerLock?.();
+        }
+
         document.addEventListener('click', () => { 
             if (gameState === 'SPECTATING') cycleSpectator();
-            else if (gameState==='PLAYING' && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); 
+            else if (gameState==='PLAYING' && !isComputerActive && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); 
         });
-        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); } });
-        document.addEventListener('mousedown', (e) => { if(document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
+        document.addEventListener('mousemove', (e) => { if (!isComputerActive && document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); } });
+        document.addEventListener('mousedown', (e) => { if(!isComputerActive && document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
+        
         window.addEventListener('keydown', (e) => {
+            if (isComputerActive) {
+                if (e.code === 'Backspace') {
+                    e.preventDefault();
+                    closeComputerTerminal();
+                }
+                return;
+            }
+
             if (gameState === 'SPECTATING') { if (e.code === 'Space' || e.code === 'Enter') cycleSpectator(); return; }
             keys[e.key.toLowerCase()] = true;
             if (e.key === 'Shift') {
@@ -868,7 +1124,7 @@
             updateGamepad();
 
             // --- SPRINT LOGIC ---
-            if (gameState === 'PLAYING') {
+            if (gameState === 'PLAYING' && !isComputerActive) {
                 let moving = keys['w'] || keys['s'] || keys['a'] || keys['d'] || Math.abs(controllerState.moveX) > 0 || Math.abs(controllerState.moveY) > 0;
                 if (player.exhausted) {
                     player.isSprinting = false;
@@ -886,7 +1142,6 @@
                         player.sprintCooldownLeft = 7.0;
                     }
                 } else {
-                    // Recharge sprint when not sprinting
                     if (player.sprintTimeLeft < 7.0) {
                         player.sprintTimeLeft = Math.min(7.0, player.sprintTimeLeft + delta);
                     }
@@ -924,7 +1179,7 @@
                     camera.rotation.set(-0.2, 0, 0);
                 }
             } 
-            else if (gameState === 'PLAYING') {
+            else if (gameState === 'PLAYING' && !isComputerActive) {
                 
                 doors.forEach(d => { 
                     let distP = Math.hypot(player.position.x - d.worldX, player.position.z - d.worldZ);
