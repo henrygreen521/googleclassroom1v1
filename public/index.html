@@ -21,8 +21,6 @@
         .hit-pop { position: absolute; font-weight: 900; color: #facc15; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000; pointer-events: none; animation: floatUp 0.6s ease-out forwards; z-index: 40; }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 50% { transform: translateY(-30px) scale(1.2); } 100% { opacity: 0; transform: translateY(-55px) scale(1); } }
         
-        .interact-prompt { position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.85); border: 2px solid #22c55e; padding: 8px 18px; border-radius: 12px; font-size: 12px; font-weight: 700; color: #ecfdf5; backdrop-filter: blur(6px); box-shadow: 0 0 10px rgba(34,197,94,0.2); transition: opacity 0.2s ease; }
-        .interact-prompt.opacity-0 { opacity: 0; }
         #hurt-overlay { backdrop-filter: blur(1px); }
 
         #toast-container { position: absolute; bottom: 20px; left: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
@@ -47,7 +45,7 @@
         .move-btn[data-key="s"] { grid-column: 2; grid-row: 3; } .move-btn[data-key="d"] { grid-column: 3; grid-row: 2; }
         .action-btn { min-height: 52px; font-size: 11px; padding: 8px; background: rgba(30, 41, 59, 0.9); }
         .action-btn.jump { background: rgba(59, 130, 246, 0.9); } .action-btn.attack { background: rgba(239, 68, 68, 0.9); }
-        .action-btn.door { background: rgba(34, 197, 94, 0.9); } .action-btn.chalk { background: rgba(250, 204, 21, 0.9); color: #111827; }
+        .action-btn.chalk { background: rgba(250, 204, 21, 0.9); color: #111827; grid-column: span 2; }
         .look-pad { position: absolute; right: 18px; bottom: 216px; width: 150px; height: 150px; border-radius: 50%; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(15, 23, 42, 0.18); box-shadow: inset 0 0 25px rgba(15, 23, 42, 0.25); pointer-events: auto; touch-action: none; }
         .look-pad::before { content: "LOOK"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.18em; color: rgba(255,255,255,0.7); }
         @media (min-width: 901px) { .mobile-controls { display: none !important; } }
@@ -57,7 +55,6 @@
 
     <canvas id="game-canvas"></canvas>
     <div id="crosshair" class="crosshair hidden"><div class="crosshair-line ch-h"></div><div class="crosshair-line ch-v"></div><div class="crosshair-line ch-dot"></div></div>
-    <div id="interact-prompt" class="interact-prompt opacity-0">Press <span class="bg-emerald-600 px-2 py-0.5 rounded text-xs mx-1">E</span></div>
     <div id="hurt-overlay" class="absolute inset-0 bg-red-600/40 pointer-events-none opacity-0 z-20 transition-opacity duration-200"></div>
     <div id="toast-container"></div>
 
@@ -72,7 +69,7 @@
                 <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden p-0.5"><div id="p1-hp" class="hp-bar-fill bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full w-full"></div></div>
             </div>
             <div class="flex flex-col items-center justify-center bg-slate-900/90 px-4 py-2 rounded-2xl border border-slate-700 shadow-xl">
-                <span id="location-badge" class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">CLASSROOM 101</span>
+                <span id="location-badge" class="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">SCHOOL</span>
                 <span id="timer" class="text-2xl font-black text-yellow-400 pixel-font my-0.5">99</span>
             </div>
             <div id="ai-hp-container" class="w-5/12 bg-slate-900/85 p-3 rounded-2xl border-2 border-red-500 shadow-xl backdrop-blur-md">
@@ -87,7 +84,7 @@
             <div id="announcer-text" class="pixel-font text-2xl md:text-4xl text-yellow-300 text-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] transition-transform duration-300 transform scale-0">CLASS IS IN SESSION!</div>
         </div>
         <div class="self-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-md text-xs text-slate-300 pointer-events-auto text-center hidden md:block">
-            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>E/X:</b> Doors | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
+            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>Push Doors Open!</b> | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
             <div id="chalk-status" class="mt-1 font-bold text-emerald-400">Chalk: READY</div>
         </div>
     </div>
@@ -104,6 +101,7 @@
     <!-- Main Menu -->
     <div id="main-menu" class="absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
         <div id="main-content-box" class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-emerald-500 text-center flex flex-col items-center my-auto transition-all">
+            
             <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-2 border-yellow-400 mb-3 shadow-lg">🍕</div>
             <h1 class="text-2xl font-black text-white tracking-tight">Google Classroom Arena</h1>
             <p class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4">Procedural Edition</p>
@@ -134,16 +132,19 @@
             </div>
 
             <div id="panel-single" class="w-full flex flex-col items-center">
-                <button id="btn-start" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-2xl shadow-lg transition-all text-base">⚔️ PLAY vs AI</button>
+                <button id="btn-start" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-2xl shadow-lg transition-all text-base">
+                    ⚔️ PLAY vs AI
+                </button>
             </div>
 
             <div id="panel-multi" class="w-full hidden flex flex-col items-center">
                 <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                
                 <div id="multi-actions" class="grid grid-cols-2 gap-2 w-full mb-4">
                     <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors">Create Room</button>
                     <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">Join Room</button>
                 </div>
-                
+
                 <div id="join-box" class="w-full hidden mb-4 flex-col gap-2">
                     <div class="flex gap-2 w-full">
                         <button id="btn-back-join" class="w-1/3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">◀ BACK</button>
@@ -163,6 +164,7 @@
                     <p id="waiting-msg" class="text-xs text-yellow-400 font-bold text-center italic hidden">Waiting for host to start...</p>
                 </div>
             </div>
+            
             <button id="btn-open-settings" class="mt-5 text-xs text-slate-400 hover:text-white transition-colors uppercase tracking-wider font-bold">⚙️ Settings</button>
         </div>
 
@@ -192,7 +194,7 @@
     <div id="mobile-controls" class="mobile-controls">
         <div class="mobile-pad left"><div class="move-grid"><button class="move-btn" data-key="w">W</button><button class="move-btn" data-key="a">A</button><button class="move-btn" data-key="s">S</button><button class="move-btn" data-key="d">D</button></div></div>
         <div id="mobile-look-pad" class="look-pad" aria-label="Look pad"></div>
-        <div class="mobile-pad right"><button class="action-btn jump" data-action="jump">Jump</button><button class="action-btn attack" data-action="attack">Attack</button><button class="action-btn door" data-action="door">Door</button><button class="action-btn chalk" data-action="chalk">Chalk</button></div>
+        <div class="mobile-pad right"><button class="action-btn jump" data-action="jump">Jump</button><button class="action-btn attack" data-action="attack">Attack</button><button class="action-btn chalk" data-action="chalk">Chalk</button></div>
     </div>
 
     <script>
@@ -230,10 +232,11 @@
         
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
         const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0, isSpectator: false };
-        const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false, prevX: false };
+        const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, swingTimer: 0, chalkCooldown: 0, mesh: null, head: null, arm: null };
         const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], chalkProjectiles = [];
-        let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
+
+        // --- GLOBAL TEXTURE LOADER ---
         let textures = { floor: null, wall: null };
 
         function showToast(message) {
@@ -305,9 +308,7 @@
             if (!renderer) return;
             renderer.setPixelRatio(userSettings.performance ? 1.0 : Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = !userSettings.performance;
-            scene.traverse((child) => {
-                if (child.isMesh && child.material) child.material.needsUpdate = true;
-            });
+            scene.traverse((child) => { if (child.isMesh && child.material) child.material.needsUpdate = true; });
         }
 
         // --- SOCKET LOGIC ---
@@ -346,8 +347,7 @@
 
         socket.on('peer_attack', (data) => {
             if (peerMeshes[data.attackerId]) {
-                peerMeshes[data.attackerId].attackTimer = 0.45;
-                soundFX.playSwing();
+                peerMeshes[data.attackerId].attackTimer = 0.45; soundFX.playSwing();
             }
         });
 
@@ -438,27 +438,43 @@
             const tex = new THREE.TextureLoader().load(url, undefined, undefined, () => console.warn(`Failed to load ${url}`));
             tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding; tex.repeat.set(rx, ry); return tex;
         }
-        function createWall(w, h, d, x, y, z, tint = 0xffffff) {
+        function createWall(group, w, h, d, x, y, z, tint = 0xffffff) {
             const mat = new THREE.MeshStandardMaterial({ color: tint, map: getTex('assets/wall.jpeg', Math.max(w, d) / 4, h / 4), roughness: 0.8 });
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh);
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; group.add(mesh);
         }
         function createChalkboardTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#163824'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#ffffff'; ctx.font = 'bold 42px "Product Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('CLASSROOM 101 - FPV FIGHT ARENA', canvas.width / 2, 80);
             ctx.strokeStyle = '#81c784'; ctx.lineWidth = 4; ctx.strokeRect(60, 110, canvas.width - 120, 350); ctx.font = '22px "Press Start 2P", monospace'; ctx.fillStyle = '#fde047'; ctx.fillText('PROCEDURAL EDITION', canvas.width / 2, 190); return new THREE.CanvasTexture(canvas);
         }
-        function addStaticObstacle(x, z, w, d) { staticObstacles.push({ x, z, halfWidth: w, halfDepth: d }); }
-        function addFurnitureSurface(x, z, w, d, topY = 0) { furnitureSurfaces.push({ x, z, halfWidth: w, halfDepth: d, topY }); }
         
-        function createDoor(x, z, rotY, doorId, hingeRight = false) {
-            const doorPivot = new THREE.Group(); doorPivot.position.set(x, 0, z); doorPivot.rotation.y = rotY;
+        function regObs(group, lx, lz, hw, hd) {
+            let angle = group.rotation.y;
+            let cos = Math.round(Math.cos(angle)); let sin = Math.round(Math.sin(angle));
+            let wx = lx * cos + lz * sin; let wz = -lx * sin + lz * cos;
+            let ww = hw, wd = hd; if (Math.abs(sin) === 1) { ww = hd; wd = hw; }
+            staticObstacles.push({ x: group.position.x + wx, z: group.position.z + wz, halfWidth: ww, halfDepth: wd });
+        }
+        function regSurf(group, lx, lz, hw, hd, topY) {
+            let angle = group.rotation.y;
+            let cos = Math.round(Math.cos(angle)); let sin = Math.round(Math.sin(angle));
+            let wx = lx * cos + lz * sin; let wz = -lx * sin + lz * cos;
+            let ww = hw, wd = hd; if (Math.abs(sin) === 1) { ww = hd; wd = hw; }
+            furnitureSurfaces.push({ x: group.position.x + wx, z: group.position.z + wz, halfWidth: ww, halfDepth: wd, topY });
+        }
+
+        function createDoor(group, lx, lz, rotY, hingeRight = false) {
+            const doorPivot = new THREE.Group(); doorPivot.position.set(lx, 0, lz); doorPivot.rotation.y = rotY;
             const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
-            const offset = hingeRight ? -1.5 : 1.5;
-            doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
-            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); 
-            glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
-            scene.add(doorPivot); 
-            const d = { id: doorId, pivot: doorPivot, isOpen: false, targetRot: rotY, baseRot: rotY, x, z, hingeRight }; doors.push(d); return d;
+            const offset = hingeRight ? -1.5 : 1.5; doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
+            group.add(doorPivot); 
+            
+            let angle = group.rotation.y;
+            let cos = Math.round(Math.cos(angle)), sin = Math.round(Math.sin(angle));
+            let wx = lx * cos + lz * sin; let wz = -lx * sin + lz * cos;
+            
+            doors.push({ pivot: doorPivot, isOpen: false, wasOpen: false, baseRot: rotY, worldX: group.position.x + wx, worldZ: group.position.z + wz, hingeRight });
         }
 
         function buildDynamicMap(settings) {
@@ -470,138 +486,170 @@
             furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0;
 
             const cCount = settings.classrooms || 1; const bCount = settings.bathrooms || 0; const pCount = settings.computers || 0; const fCount = settings.cafeterias || 1;
-            const totalNorth = cCount + bCount + pCount; const slotSize = 30; const totalSlots = Math.max(totalNorth, fCount) || 1;
-            const hallLength = totalSlots * slotSize; const centerX = (totalSlots - 1) * 15;
-
-            worldBounds = { minX: -15, maxX: hallLength - 15, minZ: -10, maxZ: 45.5 };
             
-            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', hallLength/4, 2), roughness: 0.7, metalness: 0.1, color: 0xe2e8f0 }));
-            hallFloor.position.set(centerX, 0, 12.5); hallFloor.rotation.x = -Math.PI / 2; hallFloor.receiveShadow = true; scene.add(hallFloor);
-            const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b })); hallCeil.position.set(centerX, 5, 12.5); hallCeil.rotation.x = Math.PI / 2; scene.add(hallCeil);
+            const roomsList = [];
+            for(let i=0; i<cCount; i++) roomsList.push('class');
+            for(let i=0; i<bCount; i++) roomsList.push('bath');
+            for(let i=0; i<pCount; i++) roomsList.push('pc');
+            for(let i=0; i<fCount; i++) roomsList.push('cafe');
+            roomsList.sort(()=>Math.random()-0.5);
 
-            createWall(0.4, 5, 6, -15, 2.5, 12.5, 0xe2e8f0); addStaticObstacle(-15, 12.5, 0.4, 3);
-            createWall(0.4, 5, 6, hallLength - 15, 2.5, 12.5, 0xe2e8f0); addStaticObstacle(hallLength - 15, 12.5, 0.4, 3);
-
-            for (let i = 0; i < totalSlots; i++) {
-                let offsetX = i * slotSize;
-                const hLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe })); hLight.position.set(offsetX, 4.95, 12.5); scene.add(hLight);
-
-                // NORTH SIDE (Classrooms -> Bathrooms -> Computer Labs)
-                if (i < cCount) {
-                    buildClassroom(offsetX, 0, i);
-                    createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
-                    createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
-                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.5, 9.5, 0, `door_c_${i}`);
-                } else if (i < cCount + bCount) {
-                    buildBathroom(offsetX, 0, i);
-                    createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
-                    createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
-                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.5, 9.5, 0, `door_b_${i}`);
-                } else if (i < totalNorth) {
-                    buildComputerRoom(offsetX, 0, i);
-                    createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
-                    createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
-                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.5, 9.5, 0, `door_pc_${i}`);
-                } else {
-                    createWall(30, 5, 0.4, offsetX, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX, 9.5, 15, 0.3);
+            let hCells = {}; let cx = 0, cz = 0; hCells['0,0'] = {x:0, z:0};
+            let numHalls = Math.ceil(roomsList.length / 2) + 1;
+            
+            for (let i = 1; i < numHalls; i++) {
+                let opts = [ {dx:1, dz:0}, {dx:-1, dz:0}, {dx:0, dz:1}, {dx:0, dz:-1} ].sort(()=>Math.random()-0.5);
+                let moved = false;
+                for(let o of opts) {
+                    if (!hCells[`${cx+o.dx},${cz+o.dz}`]) {
+                        cx += o.dx; cz += o.dz; hCells[`${cx},${cz}`] = {x:cx, z:cz}; moved = true; break;
+                    }
                 }
-
-                // SOUTH SIDE (Cafeterias)
-                if (i < fCount) {
-                    buildCafeteria(offsetX, 25, i);
-                    createWall(12, 5, 0.4, offsetX - 9, 2.5, 15.5, 0xe2e8f0); addStaticObstacle(offsetX - 9, 15.5, 6, 0.2);
-                    createWall(12, 5, 0.4, offsetX + 9, 2.5, 15.5, 0xe2e8f0); addStaticObstacle(offsetX + 9, 15.5, 6, 0.2);
-                    createWall(6, 1.2, 0.4, offsetX, 4.4, 15.5, 0xe2e8f0);
-                    createDoor(offsetX - 3.0, 15.5, 0, `door_f_${i}a`); createDoor(offsetX + 3.0, 15.5, 0, `door_f_${i}b`, true);
+                if(!moved) break;
+            }
+            
+            let edges = [];
+            for (let key in hCells) {
+                let c = hCells[key];
+                let dirs = [ {dx:0, dz:-1, r:0}, {dx:1, dz:0, r:-Math.PI/2}, {dx:0, dz:1, r:Math.PI}, {dx:-1, dz:0, r:Math.PI/2} ];
+                for(let d of dirs) {
+                    if (!hCells[`${c.x+d.dx},${c.z+d.dz}`]) edges.push({ cx: c.x, cz: c.z, r: d.r, dx: d.dx, dz: d.dz });
+                }
+            }
+            edges.sort(()=>Math.random()-0.5);
+            
+            const ts = 30; 
+            for (let key in hCells) {
+                let c = hCells[key];
+                let grp = new THREE.Group(); grp.position.set(c.x * ts, 0, c.z * ts); scene.add(grp);
+                
+                const f = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.7, color: 0xe2e8f0 }));
+                f.rotation.x = -Math.PI/2; f.receiveShadow = true; grp.add(f);
+                const cl = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                cl.position.y = 6; cl.rotation.x = Math.PI/2; grp.add(cl);
+                
+                const l = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
+                l.position.y = 5.95; grp.add(l);
+            }
+            
+            for (let edge of edges) {
+                let grp = new THREE.Group();
+                grp.position.set(edge.cx * ts + (edge.dx * 15), 0, edge.cz * ts + (edge.dz * 15));
+                grp.rotation.y = edge.r;
+                scene.add(grp);
+                
+                if (roomsList.length > 0) {
+                    let room = roomsList.pop();
+                    if (room === 'cafe') {
+                        createWall(grp, 12, 5, 0.4, -9, 2.5, 0, 0xe2e8f0); regObs(grp, -9, 0, 6, 0.2);
+                        createWall(grp, 12, 5, 0.4, 9, 2.5, 0, 0xe2e8f0); regObs(grp, 9, 0, 6, 0.2);
+                        createWall(grp, 6, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
+                        createDoor(grp, -3.0, 0, 0, false); createDoor(grp, 3.0, 0, 0, true);
+                        buildCafeteria(grp);
+                    } else {
+                        createWall(grp, 13.5, 5, 0.4, -8.25, 2.5, 0, 0xe2e8f0); regObs(grp, -8.25, 0, 6.75, 0.2);
+                        createWall(grp, 13.5, 5, 0.4, 8.25, 2.5, 0, 0xe2e8f0); regObs(grp, 8.25, 0, 6.75, 0.2);
+                        createWall(grp, 3, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
+                        createDoor(grp, -1.5, 0, 0, false);
+                        if (room === 'class') buildClassroom(grp);
+                        if (room === 'bath') buildBathroom(grp);
+                        if (room === 'pc') buildComputerRoom(grp);
+                    }
                 } else {
-                    createWall(30, 5, 0.4, offsetX, 2.5, 15.5, 0xe2e8f0); addStaticObstacle(offsetX, 15.5, 15, 0.3);
+                    createWall(grp, 30, 5, 0.4, 0, 2.5, 0, 0xe2e8f0); regObs(grp, 0, 0, 15, 0.2);
                 }
             }
         }
 
-        function buildClassroom(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.7, color: 0xcccccc }));
-            floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
-            createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf8fafc); addStaticObstacle(x, z - 10, 13, 0.4);
-            createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
-            createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
-            if(idx === 0) { const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(x, 2.8, z - 9.75); scene.add(board); }
+        function buildClassroom(grp) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.7, color: 0xcccccc }));
+            floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
+            
+            const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(0, 2.8, -19.7); grp.add(board);
 
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }), metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
-            const deskPositions = [ {dx: -6, dz: -3}, {dx: -2, dz: -3}, {dx: 2, dz: -3}, {dx: 6, dz: -3}, {dx: -6, dz: 2}, {dx: -2, dz: 2}, {dx: 2, dz: 2}, {dx: 6, dz: 2} ];
+            const deskPositions = [ {dx: -8, dz: -6}, {dx: -3, dz: -6}, {dx: 3, dz: -6}, {dx: 8, dz: -6}, {dx: -8, dz: -13}, {dx: -3, dz: -13}, {dx: 3, dz: -13}, {dx: 8, dz: -13} ];
             deskPositions.forEach(p => {
-                const grp = new THREE.Group(); grp.position.set(x + p.dx, 0, z + p.dz);
-                const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; grp.add(top);
+                const d = new THREE.Group(); d.position.set(p.dx, 0, p.dz);
+                const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; d.add(top);
                 const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.3);
-                [ {lx:-0.9, lz:-0.5}, {lx:0.9, lz:-0.5}, {lx:-0.9, lz:0.5}, {lx:0.9, lz:0.5} ].forEach(l => { const leg = new THREE.Mesh(legGeo, metalMat); leg.position.set(l.lx, 0.65, l.lz); leg.castShadow = true; grp.add(leg); });
-                scene.add(grp); addFurnitureSurface(x + p.dx, z + p.dz, 1.1, 0.7, 1.3);
+                [ {lx:-0.9, lz:-0.5}, {lx:0.9, lz:-0.5}, {lx:-0.9, lz:0.5}, {lx:0.9, lz:0.5} ].forEach(l => { const leg = new THREE.Mesh(legGeo, metalMat); leg.position.set(l.lx, 0.65, l.lz); leg.castShadow = true; d.add(leg); });
+                grp.add(d); regSurf(grp, p.dx, p.dz, 1.1, 0.7, 1.3);
             });
         }
 
-        function buildBathroom(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.2, color: 0xccddff }));
-            floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
-            createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf1f5f9); addStaticObstacle(x, z - 10, 13, 0.4);
-            createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf1f5f9); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
-            createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf1f5f9); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
+        function buildBathroom(grp) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.2, color: 0xccddff }));
+            floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf1f5f9); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf1f5f9); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf1f5f9); regObs(grp, 15, -10, 0.2, 10);
 
-            for(let i=0; i<3; i++) {
-                let sx = x - 9 + (i*4);
-                createWall(0.2, 4, 4, sx, 2, z - 8, 0x94a3b8); addStaticObstacle(sx, z - 8, 0.1, 2);
+            for(let i=0; i<4; i++) {
+                let sx = -12 + (i*4);
+                createWall(grp, 0.2, 4, 4, sx, 2, -18, 0x94a3b8); regObs(grp, sx, -18, 0.1, 2);
                 const toilet = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), new THREE.MeshStandardMaterial({color:0xffffff}));
-                toilet.position.set(sx + 2, 0.5, z - 9); toilet.castShadow = true; scene.add(toilet); addFurnitureSurface(sx + 2, z - 9, 0.5, 0.75, 1.0);
+                toilet.position.set(sx + 2, 0.5, -19); toilet.castShadow = true; grp.add(toilet); regSurf(grp, sx + 2, -19, 0.5, 0.75, 1.0);
             }
             
-            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
-            sinkBase.position.set(x + 8, 0.5, z - 9); sinkBase.castShadow = true; scene.add(sinkBase); addFurnitureSurface(x + 8, z - 9, 3, 0.75, 1.0);
-            createWall(6, 2, 0.1, x + 8, 2.5, z - 9.7, 0x94a3b8); 
+            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
+            sinkBase.position.set(8, 0.5, -19); sinkBase.castShadow = true; grp.add(sinkBase); regSurf(grp, 8, -19, 4, 0.75, 1.0);
+            createWall(grp, 8, 2, 0.1, 8, 2.5, -19.7, 0x94a3b8); 
         }
 
-        function buildComputerRoom(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.6, color: 0x99aadd }));
-            floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
-            createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf8fafc); addStaticObstacle(x, z - 10, 13, 0.4);
-            createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
-            createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
+        function buildComputerRoom(grp) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.6, color: 0x99aadd }));
+            floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
 
             const deskMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }), pcMat = new THREE.MeshStandardMaterial({ color: 0x111827 }), screenMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 0.5 });
-            const rows = [-4, 2];
+            const rows = [-7, -15];
             rows.forEach(rz => {
-                const deskGrp = new THREE.Group(); deskGrp.position.set(x, 0, z + rz);
-                const table = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; deskGrp.add(table);
-                [ -9.5, 0, 9.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; deskGrp.add(leg); });
+                const dGrp = new THREE.Group(); dGrp.position.set(0, 0, rz);
+                const table = new THREE.Mesh(new THREE.BoxGeometry(24, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; dGrp.add(table);
+                [ -11.5, 0, 11.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; dGrp.add(leg); });
                 
-                for(let c=-8; c<=8; c+=4) {
-                    const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); deskGrp.add(monitor);
-                    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); deskGrp.add(screen);
-                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.15), pcMat); base.position.set(c, 1.4, -0.65); deskGrp.add(base);
+                for(let c=-10; c<=10; c+=5) {
+                    const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); dGrp.add(monitor);
+                    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); dGrp.add(screen);
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.15), pcMat); base.position.set(c, 1.4, -0.65); dGrp.add(base);
                 }
-                scene.add(deskGrp); addFurnitureSurface(x, z + rz, 10, 1.25, 1.2);
+                grp.add(dGrp); regSurf(grp, 0, rz, 12, 1.25, 1.2);
             });
         }
 
-        function buildCafeteria(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 10, 12), roughness: 0.6, color: 0xffffee }));
-            floor.position.set(x, 0, z + 5.5); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(x, 6, z + 5.5); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
-            createWall(26, 6, 0.4, x, 3, z + 20.5, 0xffedd5); addStaticObstacle(x, z + 20.5, 13, 0.4);
-            createWall(0.4, 6, 30, x - 13, 3, z + 5.5, 0xffedd5); addStaticObstacle(x - 13, z + 5.5, 0.4, 15);
-            createWall(0.4, 6, 30, x + 13, 3, z + 5.5, 0xffedd5); addStaticObstacle(x + 13, z + 5.5, 0.4, 15);
+        function buildCafeteria(grp) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 10, 10), roughness: 0.6, color: 0xffffee }));
+            floor.position.set(0, 0, -15); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(0, 6, -15); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            
+            createWall(grp, 30, 6, 0.4, 0, 3, -30, 0xffedd5); regObs(grp, 0, -30, 15, 0.2);
+            createWall(grp, 0.4, 6, 30, -15, 3, -15, 0xffedd5); regObs(grp, -15, -15, 0.2, 15);
+            createWall(grp, 0.4, 6, 30, 15, 3, -15, 0xffedd5); regObs(grp, 15, -15, 0.2, 15);
 
             const tMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }), bMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 });
-            for(let tx = -6; tx <= 6; tx+=12) {
-                for(let tz = 0; tz <= 12; tz+=6) {
-                    const table = new THREE.Group(); table.position.set(x + tx, 0, z + tz);
+            for(let tx = -8; tx <= 8; tx+=16) {
+                for(let tz = -8; tz >= -22; tz-=7) {
+                    const table = new THREE.Group(); table.position.set(tx, 0, tz);
                     const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
                     const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.45); benchA.castShadow=true; table.add(benchA);
                     const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.45); benchB.castShadow=true; table.add(benchB);
-                    scene.add(table); addFurnitureSurface(x + tx, z + tz, 1.4, 1.1, 1.2);
+                    grp.add(table); regSurf(grp, tx, tz, 1.4, 1.1, 1.2);
                 }
             }
-            const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); vend.position.set(x + 10, 1.9, z + 18); vend.castShadow=true; scene.add(vend); addStaticObstacle(x + 10, z + 18, 1.1, 0.7);
+            const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); 
+            vend.position.set(10, 1.9, -28); vend.castShadow=true; grp.add(vend); regObs(grp, 10, -28, 1.1, 0.7);
         }
 
         // --- GAMEPLAY LOGIC ---
@@ -624,15 +672,7 @@
             const rtPressed = rtValue > 0.2; if (rtPressed && !controllerState.prevRT) shootChalk(); controllerState.prevRT = rtPressed;
             const buttonA = gp.buttons[0] && gp.buttons[0].pressed; if (buttonA && !controllerState.prevA && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
             controllerState.prevA = buttonA;
-            const buttonX = gp.buttons[2] && gp.buttons[2].pressed; if (buttonX && !controllerState.prevX && gameState === 'PLAYING') { let d = checkDoorProximity(); if (d) toggleDoor(d); }
-            controllerState.prevX = buttonX;
         }
-
-        function checkDoorProximity() {
-            let near = null; doors.forEach(d => { if (Math.hypot(player.position.x - d.x, player.position.z - d.z) < 3.5) near = d; });
-            document.getElementById('interact-prompt').classList.toggle('opacity-0', !near); return near;
-        }
-        function toggleDoor(d) { d.isOpen = !d.isOpen; soundFX.playDoorSqueak(); }
 
         function triggerPlayerAttack() {
             if (player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
@@ -732,7 +772,6 @@
                     e.preventDefault(); btn.classList.add('active');
                     if(act === 'attack') triggerPlayerAttack();
                     if(act === 'jump' && player.isGrounded) { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
-                    if(act === 'door') { let d = checkDoorProximity(); if(d) toggleDoor(d); }
                     if(act === 'chalk') shootChalk();
                 });
                 ['pointerup','pointerleave','pointercancel'].forEach(ev => btn.addEventListener(ev, () => btn.classList.remove('active')));
@@ -768,7 +807,6 @@
         window.addEventListener('keydown', (e) => {
             if (gameState === 'SPECTATING') { if (e.code === 'Space' || e.code === 'Enter') cycleSpectator(); return; }
             keys[e.key.toLowerCase()] = true;
-            if (e.key.toLowerCase() === 'e' && gameState === 'PLAYING') { let d = checkDoorProximity(); if(d) toggleDoor(d); }
             if (e.key.toLowerCase() === 'q' && gameState === 'PLAYING' && !e.repeat) shootChalk();
             if (e.code === 'Space' && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
         });
@@ -782,7 +820,6 @@
             const now = performance.now(); const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1); animate.lastTime = now;
             updateGamepad();
 
-            // Name Tag Billboarding
             if (ai.mesh && ai.mesh.visible) {
                 ai.mesh.children.forEach(c => { if(c.isSprite) { c.lookAt(camera.position); }});
             }
@@ -809,12 +846,20 @@
                     camera.rotation.set(target.pitch, target.yaw, 0);
                 } else {
                     document.getElementById('spectate-name').innerText = `SPECTATING: WAITING...`;
-                    camera.position.lerp(new THREE.Vector3(worldBounds.minX + 15, 5, 10), 0.05);
+                    camera.position.lerp(new THREE.Vector3(0, 5, 0), 0.05);
                     camera.rotation.set(-0.2, 0, 0);
                 }
             } 
             else if (gameState === 'PLAYING') {
-                doors.forEach(d => { d.pivot.rotation.y = THREE.MathUtils.lerp(d.pivot.rotation.y, d.baseRot + (d.isOpen ? (d.hingeRight ? -Math.PI/2 : Math.PI/2) : 0), 2.5 * delta); });
+                
+                doors.forEach(d => { 
+                    let distP = Math.hypot(player.position.x - d.worldX, player.position.z - d.worldZ);
+                    let distAI = (!isMultiplayer && ai.hp > 0) ? Math.hypot(ai.position.x - d.worldX, ai.position.z - d.worldZ) : 999;
+                    d.isOpen = (distP < 4.5 || distAI < 4.5); 
+                    if (d.isOpen && !d.wasOpen) soundFX.playDoorSqueak();
+                    d.wasOpen = d.isOpen;
+                    d.pivot.rotation.y = THREE.MathUtils.lerp(d.pivot.rotation.y, d.baseRot + (d.isOpen ? (d.hingeRight ? -Math.PI/2 : Math.PI/2) : 0), 4.5 * delta); 
+                });
                 
                 player.velocity.y += GRAVITY * delta;
                 let moveVec = new THREE.Vector3();
@@ -826,8 +871,7 @@
                 let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * speed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * speed);
                 player.position.addScaledVector(wishVel, delta); player.position.y += player.velocity.y * delta;
 
-                player.position.x = Math.max(worldBounds.minX + PLAYER_RADIUS, Math.min(worldBounds.maxX - PLAYER_RADIUS, player.position.x));
-                player.position.z = Math.max(worldBounds.minZ + PLAYER_RADIUS, Math.min(worldBounds.maxZ - PLAYER_RADIUS, player.position.z));
+                if (player.position.y < -10) { player.hp = 0; endGame('FELL OUT OF BOUNDS!', false); }
 
                 staticObstacles.forEach(obs => {
                     let dx = player.position.x - obs.x, dz = player.position.z - obs.z;
@@ -861,7 +905,6 @@
                 else { player.isGrounded = false; }
 
                 camera.position.copy(player.position); camera.rotation.set(player.pitch, player.yaw, 0);
-                document.getElementById('location-badge').innerText = player.position.z > 12 ? '🍕 CAFETERIA HALL' : '📚 CAMPUS ROOMS';
 
                 if (fpvWeaponGroup) {
                     if (speed > 0 && player.isGrounded) player.bobTimer += delta * 12;
@@ -883,16 +926,16 @@
                         let dir = player.position.clone().sub(ai.position); dir.y = 0; dir.normalize();
                         
                         if (ai.chalkCooldown <= 0 && dist > 3.0 && dist < 15.0) {
-                            ai.chalkCooldown = 2.5; ai.swingTimer = 0.45;
+                            ai.chalkCooldown = 4.0; ai.swingTimer = 0.45;
                             const shootDir = player.position.clone().sub(ai.position).normalize();
-                            shootDir.y += 0.1; shootDir.normalize();
+                            shootDir.y += 0.05; shootDir.normalize();
                             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xe11d48, emissiveIntensity: 0.8 }));
                             mesh.position.copy(ai.position).add(new THREE.Vector3(0, 1.2, 0)).add(shootDir.clone().multiplyScalar(0.6));
-                            scene.add(mesh);
-                            chalkProjectiles.push({ mesh, velocity: shootDir.multiplyScalar(18), life: 1.5, isAI: true, isPeer: false });
+                            scene.add(mesh); chalkProjectiles.push({ mesh, velocity: shootDir.multiplyScalar(18), life: 1.5, isAI: true, isPeer: false });
                         }
 
                         ai.position.addScaledVector(dir, 4.0 * delta); 
+                        
                         staticObstacles.forEach(obs => {
                             let dx = ai.position.x - obs.x, dz = ai.position.z - obs.z;
                             if (Math.abs(dx) < obs.halfWidth + 0.4 && Math.abs(dz) < obs.halfDepth + 0.4) {
@@ -907,6 +950,7 @@
                                 if (ox < oz) ai.position.x += Math.sign(dx) * ox; else ai.position.z += Math.sign(dz) * oz;
                             }
                         });
+
                         ai.mesh.position.copy(ai.position); ai.mesh.rotation.y = Math.atan2(dir.x, dir.z);
                     }
                     if (ai.swingTimer > 0) { ai.swingTimer -= delta; ai.arm.rotation.x = -Math.sin((0.45 - Math.max(0, ai.swingTimer))*10); } else { ai.arm.rotation.x = 0; }
@@ -917,13 +961,22 @@
                     const proj = chalkProjectiles[i]; proj.mesh.position.addScaledVector(proj.velocity, delta); proj.life -= delta;
                     let hit = false;
                     
-                    if (proj.isAI) {
+                    staticObstacles.forEach(obs => {
+                        let dx = proj.mesh.position.x - obs.x, dz = proj.mesh.position.z - obs.z;
+                        if (Math.abs(dx) < obs.halfWidth + 0.1 && Math.abs(dz) < obs.halfDepth + 0.1) hit = true;
+                    });
+                    furnitureSurfaces.forEach(f => {
+                        let dx = proj.mesh.position.x - f.x, dz = proj.mesh.position.z - f.z;
+                        if (proj.mesh.position.y < f.topY && Math.abs(dx) < f.halfWidth + 0.1 && Math.abs(dz) < f.halfDepth + 0.1) hit = true;
+                    });
+
+                    if (!hit && proj.isAI) {
                         if (proj.mesh.position.distanceTo(player.position.clone().add(new THREE.Vector3(0, 0.6, 0))) < 1.0) {
                             player.hp -= 10; showHitPop(proj.mesh.position, '-10'); soundFX.playHit(); hit = true;
                             document.getElementById('hurt-overlay').style.opacity = '1'; setTimeout(() => document.getElementById('hurt-overlay').style.opacity = '0', 250); updateHUD();
                             if (player.hp <= 0) endGame("DEFEATED BY CLASS REBEL...", false);
                         }
-                    } else if (!proj.isPeer) {
+                    } else if (!hit && !proj.isPeer) {
                         if (!isMultiplayer && ai.hp > 0) {
                             if (proj.mesh.position.distanceTo(ai.position.clone().add(new THREE.Vector3(0, 0.6, 0))) < 1.0) {
                                 ai.hp -= 15; showHitPop(proj.mesh.position, '-15'); soundFX.playHit(); hit = true; updateHUD();
@@ -950,8 +1003,6 @@
         }
         
         initScene();
-        bindMobileButtons();
-        syncMobileControls();
         buildDynamicMap({ classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 });
         animate();
     </script>
