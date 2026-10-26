@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
 
         const colors = ['#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
         const pColor = colors[Object.keys(room.players).length % colors.length];
-        const isSpec = room.started; // Join as spectator if match already started
+        const isSpec = room.started; 
 
         currentRoom = roomCode;
         const newPlayer = {
@@ -59,14 +59,10 @@ io.on('connection', (socket) => {
         room.players[socket.id] = newPlayer;
 
         socket.join(roomCode);
-        
-        // Let the joiner know their state
         socket.emit('room_joined', { roomCode, playerId: socket.id, settings: room.settings, isSpectator: isSpec, players: room.players });
         
         if (isSpec) {
-            // Tell existing players someone joined as a spectator
             socket.to(roomCode).emit('spectator_joined', newPlayer.username);
-            // Send peer update so clients know they exist
             socket.to(roomCode).emit('peer_update', newPlayer);
         } else {
             io.to(roomCode).emit('lobby_update', room);
@@ -79,7 +75,7 @@ io.on('connection', (socket) => {
             room.started = true;
             Object.values(room.players).forEach((player) => {
                 player.hp = 100;
-                player.isSpectator = false; // Everyone plays in the new round
+                player.isSpectator = false; 
             });
             io.to(currentRoom).emit('match_started', { players: room.players, settings: room.settings });
         }
@@ -94,6 +90,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('player_attack', (data) => { socket.to(currentRoom).emit('peer_attack', { attackerId: socket.id, ...data }); });
+    
+    socket.on('player_shoot_chalk', (data) => { socket.to(currentRoom).emit('peer_shoot_chalk', { shooterId: socket.id, ...data }); });
+
     socket.on('player_hit', ({ targetId, damage }) => {
         const room = rooms[currentRoom];
         if (room && room.players[targetId] && !room.players[targetId].isSpectator) {
