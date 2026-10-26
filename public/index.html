@@ -155,12 +155,15 @@
                     <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors">Create Room</button>
                     <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">Join Room</button>
                 </div>
-                <div id="join-box" class="w-full hidden mb-4">
-                    <div class="flex gap-2">
-                        <input id="input-room-code" type="text" placeholder="Code" maxlength="4" class="w-2/3 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center pixel-font uppercase tracking-[0.4em]">
-                        <button id="btn-join-room" class="w-1/3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors">JOIN</button>
+                
+                <div id="join-box" class="w-full hidden mb-4 flex-col gap-2">
+                    <div class="flex gap-2 w-full">
+                        <button id="btn-back-join" class="w-1/3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">◀ BACK</button>
+                        <input id="input-room-code" type="text" placeholder="CODE" maxlength="4" class="w-2/3 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center pixel-font uppercase tracking-[0.4em]">
                     </div>
+                    <button id="btn-join-room" class="w-full py-2.5 mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors">JOIN ROOM</button>
                 </div>
+                
                 <div id="lobby-container" class="w-full hidden bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-left">
                     <div class="flex justify-between items-center mb-3">
                         <span class="text-xs font-bold text-slate-400">ROOM CODE:</span>
@@ -189,6 +192,13 @@
             </div>
             <button id="btn-close-settings" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors mt-2">Back to Menu</button>
         </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls" class="mobile-controls">
+        <div class="mobile-pad left"><div class="move-grid"><button class="move-btn" data-key="w">W</button><button class="move-btn" data-key="a">A</button><button class="move-btn" data-key="s">S</button><button class="move-btn" data-key="d">D</button></div></div>
+        <div id="mobile-look-pad" class="look-pad" aria-label="Look pad"></div>
+        <div class="mobile-pad right"><button class="action-btn jump" data-action="jump">Jump</button><button class="action-btn attack" data-action="attack">Attack</button><button class="action-btn door" data-action="door">Door</button><button class="action-btn chalk" data-action="chalk">Chalk</button></div>
     </div>
 
     <script>
@@ -222,7 +232,7 @@
 
         let scene, camera, renderer, gameState = 'MENU', matchTime = 99, timerInterval = null;
         let fpvWeaponGroup, fpvRulerMesh;
-        let spectatorIndex = 0; // Tracks which player we are currently spectating
+        let spectatorIndex = 0; 
         
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
         const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0, isSpectator: false };
@@ -253,7 +263,10 @@
             document.getElementById('tab-multi').classList.replace('bg-slate-800', 'bg-emerald-600'); document.getElementById('tab-multi').classList.replace('text-slate-300', 'text-white');
             document.getElementById('tab-single').classList.replace('bg-emerald-600', 'bg-slate-800'); document.getElementById('tab-single').classList.replace('text-white', 'text-slate-300');
         };
-        document.getElementById('btn-show-join').onclick = () => { document.getElementById('multi-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); document.getElementById('map-settings').classList.add('hidden'); };
+        
+        // Navigation logic for Create/Join menus
+        document.getElementById('btn-show-join').onclick = () => { document.getElementById('multi-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); document.getElementById('join-box').classList.add('flex'); document.getElementById('map-settings').classList.add('hidden'); };
+        document.getElementById('btn-back-join').onclick = () => { document.getElementById('join-box').classList.add('hidden'); document.getElementById('join-box').classList.remove('flex'); document.getElementById('multi-actions').classList.remove('hidden'); document.getElementById('map-settings').classList.remove('hidden'); };
         
         document.getElementById('btn-create-room').onclick = () => {
             const settings = { classrooms: parseInt(document.getElementById('set-classrooms').value), bathrooms: parseInt(document.getElementById('set-bathrooms').value), computers: parseInt(document.getElementById('set-computers').value), cafeterias: parseInt(document.getElementById('set-cafeterias').value) };
@@ -284,20 +297,20 @@
         });
         socket.on('spectator_joined', (name) => { showToast(`👀 ${name} joined to spectate`); });
         socket.on('lobby_update', (room) => {
-            if (player.isSpectator) return; // Keep spectators in game
+            if (player.isSpectator) return;
             const list = document.getElementById('player-list'); list.innerHTML = '';
             Object.values(room.players).forEach(p => { if(!p.isSpectator) list.innerHTML += `<div class="text-white text-sm bg-slate-700 p-2 rounded mb-1 border-l-4" style="border-color:${p.color}">${p.username} ${p.isHost ? '<span class="text-yellow-300">(HOST)</span>' : ''}</div>`; });
             document.getElementById('btn-host-start').classList.toggle('hidden', !isHost); document.getElementById('waiting-msg').classList.toggle('hidden', isHost);
         });
         socket.on('match_started', (data) => {
             peerPlayers = data.players; currentMapSettings = data.settings;
-            player.isSpectator = false; // Reset to active player
+            player.isSpectator = false;
             Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId && !peerPlayers[id].isSpectator && !peerMeshes[id]) createPeerMesh(id, peerPlayers[id].color); });
             startMatch();
         });
         socket.on('peer_update', (data) => { 
             if (peerPlayers[data.id]) Object.assign(peerPlayers[data.id], data); 
-            else peerPlayers[data.id] = data; // Catch mid-match creations
+            else peerPlayers[data.id] = data; 
         });
         socket.on('player_damaged', (data) => {
             if (data.targetId === myPlayerId && !player.isSpectator) {
@@ -409,7 +422,6 @@
                 let offsetX = i * slotSize;
                 const hLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe })); hLight.position.set(offsetX, 4.95, 12.5); scene.add(hLight);
 
-                // NORTH SIDE (Classrooms -> Bathrooms -> Computer Labs)
                 if (i < cCount) {
                     buildClassroom(offsetX, 0, i);
                     createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
@@ -429,7 +441,6 @@
                     createWall(30, 5, 0.4, offsetX, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX, 9.5, 15, 0.3);
                 }
 
-                // SOUTH SIDE (Cafeterias)
                 if (i < fCount) {
                     buildCafeteria(offsetX, 25, i);
                     createWall(12, 5, 0.4, offsetX - 9, 2.5, 15.5, 0xe2e8f0); addStaticObstacle(offsetX - 9, 15.5, 6, 0.2);
@@ -674,7 +685,6 @@
             }
         }
 
-        // Cycle Spectator logic
         function cycleSpectator() {
             if (gameState !== 'SPECTATING') return;
             const validTargets = Object.values(peerPlayers).filter(p => !p.isSpectator && p.hp > 0);
@@ -704,7 +714,6 @@
             const now = performance.now(); const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1); animate.lastTime = now;
             updateGamepad();
 
-            // Always interpolate network peers
             if (isMultiplayer && (gameState === 'PLAYING' || gameState === 'SPECTATING')) {
                 Object.keys(peerPlayers).forEach(id => {
                     if (id !== myPlayerId && peerMeshes[id] && !peerPlayers[id].isSpectator) {
@@ -794,7 +803,25 @@
                         }
                     } else {
                         let dir = player.position.clone().sub(ai.position); dir.y = 0; dir.normalize();
-                        ai.position.addScaledVector(dir, 4.0 * delta); ai.mesh.position.copy(ai.position); ai.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+                        ai.position.addScaledVector(dir, 4.0 * delta); 
+                        
+                        // AI Collision logic 
+                        staticObstacles.forEach(obs => {
+                            let dx = ai.position.x - obs.x, dz = ai.position.z - obs.z;
+                            if (Math.abs(dx) < obs.halfWidth + 0.4 && Math.abs(dz) < obs.halfDepth + 0.4) {
+                                let ox = (obs.halfWidth + 0.4) - Math.abs(dx), oz = (obs.halfDepth + 0.4) - Math.abs(dz);
+                                if (ox < oz) ai.position.x += Math.sign(dx) * ox; else ai.position.z += Math.sign(dz) * oz;
+                            }
+                        });
+                        furnitureSurfaces.forEach(f => {
+                            let dx = ai.position.x - f.x, dz = ai.position.z - f.z;
+                            if (Math.abs(dx) < f.halfWidth + 0.4 && Math.abs(dz) < f.halfDepth + 0.4) {
+                                let ox = (f.halfWidth + 0.4) - Math.abs(dx), oz = (f.halfDepth + 0.4) - Math.abs(dz);
+                                if (ox < oz) ai.position.x += Math.sign(dx) * ox; else ai.position.z += Math.sign(dz) * oz;
+                            }
+                        });
+
+                        ai.mesh.position.copy(ai.position); ai.mesh.rotation.y = Math.atan2(dir.x, dir.z);
                     }
                 }
 
