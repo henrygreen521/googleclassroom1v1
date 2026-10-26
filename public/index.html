@@ -215,7 +215,6 @@
                 const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
                 osc.type = type; osc.frequency.setValueAtTime(f1, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + t);
                 
-                // Apply global volume setting from sliders
                 let finalVol = v * userSettings.volume;
                 if (finalVol <= 0) return;
 
@@ -233,9 +232,6 @@
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, mesh: null, head: null };
         const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], particles = [], chalkProjectiles = [];
         let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
-
-        // --- GLOBAL TEXTURE LOADER FOR CUSTOM FLOOR TILE ---
-        let floorTileTexture = null;
 
         // --- UI LOGIC ---
         document.getElementById('tab-single').onclick = () => {
@@ -329,12 +325,6 @@
             dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50; dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
             scene.add(dirLight);
 
-            // Load Custom Image Texture
-            floorTileTexture = new THREE.TextureLoader().load('floor_tile.jpg');
-            floorTileTexture.wrapS = THREE.RepeatWrapping;
-            floorTileTexture.wrapT = THREE.RepeatWrapping;
-            floorTileTexture.encoding = THREE.sRGBEncoding; 
-
             buildFPVWeapon();
             buildAIFighter();
         }
@@ -364,6 +354,20 @@
         }
 
         // --- PROCEDURAL MAP GENERATION ---
+
+        // Helper to load the floor tile texture safely.
+        // It creates a unique texture object so it updates correctly when loaded.
+        function createCustomFloorTexture(repeatX, repeatY) {
+            const tex = new THREE.TextureLoader().load('floor_tile.jpg', undefined, undefined, (err) => {
+                console.warn("Could not load floor_tile.jpg, using default white.");
+            });
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.encoding = THREE.sRGBEncoding;
+            tex.repeat.set(repeatX, repeatY);
+            return tex;
+        }
+
         function createChalkboardTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#163824'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -405,11 +409,9 @@
 
             const hallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.6 });
             
-            // Re-using the custom texture, setting repeat size based on floor dimensions
-            const tMap = floorTileTexture.clone(); tMap.needsUpdate = true;
-            tMap.repeat.set(hallLength / 4, 3);
-            
-            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: tMap, roughness: 0.7, metalness: 0.1 }));
+            // Apply loaded custom texture to hallway
+            const tMap = createCustomFloorTexture(hallLength / 4, 3);
+            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: tMap, roughness: 0.7, metalness: 0.1, color: 0xe2e8f0 }));
             hallFloor.position.set(centerX, 0, 12.5); hallFloor.rotation.x = -Math.PI / 2; hallFloor.receiveShadow = true; scene.add(hallFloor);
             
             const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
@@ -447,10 +449,8 @@
         function buildClassroom(x, z, idx) {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 });
             
-            const cMap = floorTileTexture.clone(); cMap.needsUpdate = true;
-            cMap.repeat.set(8, 6);
-            
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: cMap, roughness: 0.7 }));
+            const cMap = createCustomFloorTexture(8, 6);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: cMap, roughness: 0.7, color: 0xcccccc }));
             floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
             
             const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
@@ -476,10 +476,8 @@
         function buildCafeteria(x, z, idx) {
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.8 });
             
-            const fMap = floorTileTexture.clone(); fMap.needsUpdate = true;
-            fMap.repeat.set(10, 12);
-
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: fMap, roughness: 0.6 }));
+            const fMap = createCustomFloorTexture(10, 12);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: fMap, roughness: 0.6, color: 0xffffee }));
             floor.position.set(x, 0, z + 5.5); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
             
             const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
