@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Classroom Fight Arena - Procedural Edition</title>
+    <title>Google Classroom Fight Arena</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -20,11 +20,20 @@
         .ch-dot { top: -2px; left: -2px; width: 4px; height: 4px; border-radius: 50%; background: #22c55e; }
         .hit-pop { position: absolute; font-weight: 900; color: #facc15; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000; pointer-events: none; animation: floatUp 0.6s ease-out forwards; z-index: 40; }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 50% { transform: translateY(-30px) scale(1.2); } 100% { opacity: 0; transform: translateY(-55px) scale(1); } }
+        
         .interact-prompt { position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.85); border: 2px solid #22c55e; padding: 8px 18px; border-radius: 12px; font-size: 12px; font-weight: 700; color: #ecfdf5; backdrop-filter: blur(6px); box-shadow: 0 0 10px rgba(34,197,94,0.2); transition: opacity 0.2s ease; }
         .interact-prompt.opacity-0 { opacity: 0; }
+        
         #hurt-overlay { backdrop-filter: blur(1px); }
 
-        /* Modern Sliders */
+        /* Toast Notifications */
+        #toast-container { position: absolute; bottom: 20px; left: 20px; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { background: rgba(15, 23, 42, 0.9); border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; color: #fff; animation: slideIn 0.3s ease-out forwards; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .toast.fade-out { animation: fadeOut 0.5s ease-in forwards; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+
+        /* Settings Sliders */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #10b981; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(16,185,129,0.5); }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #334155; border-radius: 2px; }
@@ -58,7 +67,9 @@
     
     <div id="interact-prompt" class="interact-prompt opacity-0">Press <span class="bg-emerald-600 px-2 py-0.5 rounded text-xs mx-1">E</span></div>
     <div id="hurt-overlay" class="absolute inset-0 bg-red-600/40 pointer-events-none opacity-0 z-20 transition-opacity duration-200"></div>
+    <div id="toast-container"></div>
 
+    <!-- Active Player UI -->
     <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-30 opacity-0 transition-opacity duration-300">
         <div class="flex justify-between items-start w-full max-w-5xl mx-auto">
             <div class="w-5/12 bg-slate-900/85 p-3 rounded-2xl border-2 border-blue-500 shadow-xl backdrop-blur-md">
@@ -93,10 +104,18 @@
         </div>
     </div>
 
+    <!-- Spectator UI -->
+    <div id="spectator-ui" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-end p-8 z-30 hidden">
+        <div class="bg-slate-900/90 border-2 border-yellow-500 p-4 rounded-2xl shadow-2xl backdrop-blur-sm text-center mb-10 pointer-events-auto">
+            <h2 class="text-yellow-400 font-black text-lg uppercase tracking-wider mb-1" id="spectate-name">SPECTATING: NONE</h2>
+            <p class="text-slate-300 text-xs font-bold mb-2">You joined mid-match. Wait for the next round!</p>
+            <p class="text-emerald-400 text-[10px] uppercase font-bold tracking-widest">Click anywhere to switch player</p>
+        </div>
+    </div>
+
     <!-- Main Menu -->
     <div id="main-menu" class="absolute inset-0 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
         <div id="main-content-box" class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-emerald-500 text-center flex flex-col items-center my-auto transition-all">
-            
             <div class="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold border-2 border-yellow-400 mb-3 shadow-lg">🍕</div>
             <h1 class="text-2xl font-black text-white tracking-tight">Google Classroom Arena</h1>
             <p class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4">Procedural Edition</p>
@@ -112,6 +131,14 @@
                     <div class="flex justify-between text-xs font-bold mb-1"><span>Classrooms</span><span id="lbl-classrooms" class="text-emerald-400">1</span></div>
                     <input type="range" id="set-classrooms" min="1" max="5" value="1" oninput="document.getElementById('lbl-classrooms').innerText = this.value">
                 </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs font-bold mb-1"><span>Bathrooms</span><span id="lbl-bathrooms" class="text-emerald-400">1</span></div>
+                    <input type="range" id="set-bathrooms" min="0" max="3" value="1" oninput="document.getElementById('lbl-bathrooms').innerText = this.value">
+                </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs font-bold mb-1"><span>Computer Rooms</span><span id="lbl-computers" class="text-emerald-400">1</span></div>
+                    <input type="range" id="set-computers" min="0" max="3" value="1" oninput="document.getElementById('lbl-computers').innerText = this.value">
+                </div>
                 <div>
                     <div class="flex justify-between text-xs font-bold mb-1"><span>Cafeterias</span><span id="lbl-cafeterias" class="text-emerald-400">1</span></div>
                     <input type="range" id="set-cafeterias" min="1" max="3" value="1" oninput="document.getElementById('lbl-cafeterias').innerText = this.value">
@@ -119,26 +146,21 @@
             </div>
 
             <div id="panel-single" class="w-full flex flex-col items-center">
-                <button id="btn-start" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-2xl shadow-lg transition-all text-base">
-                    ⚔️ PLAY vs AI
-                </button>
+                <button id="btn-start" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-2xl shadow-lg transition-all text-base">⚔️ PLAY vs AI</button>
             </div>
 
             <div id="panel-multi" class="w-full hidden flex flex-col items-center">
                 <input id="input-username" type="text" placeholder="Enter Your Student Name" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                
                 <div id="multi-actions" class="grid grid-cols-2 gap-2 w-full mb-4">
                     <button id="btn-create-room" class="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors">Create Room</button>
                     <button id="btn-show-join" class="py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs transition-colors">Join Room</button>
                 </div>
-
                 <div id="join-box" class="w-full hidden mb-4">
                     <div class="flex gap-2">
                         <input id="input-room-code" type="text" placeholder="Code" maxlength="4" class="w-2/3 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-center pixel-font uppercase tracking-[0.4em]">
                         <button id="btn-join-room" class="w-1/3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors">JOIN</button>
                     </div>
                 </div>
-
                 <div id="lobby-container" class="w-full hidden bg-slate-800/80 p-4 rounded-2xl border border-slate-700 text-left">
                     <div class="flex justify-between items-center mb-3">
                         <span class="text-xs font-bold text-slate-400">ROOM CODE:</span>
@@ -150,14 +172,11 @@
                     <p id="waiting-msg" class="text-xs text-yellow-400 font-bold text-center italic hidden">Waiting for host to start...</p>
                 </div>
             </div>
-            
             <button id="btn-open-settings" class="mt-5 text-xs text-slate-400 hover:text-white transition-colors uppercase tracking-wider font-bold">⚙️ Settings</button>
         </div>
 
-        <!-- Settings Panel -->
         <div id="settings-box" class="max-w-md w-full bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-2xl border-2 border-slate-600 text-center flex flex-col items-center my-auto hidden">
             <h2 class="text-xl font-black text-white tracking-tight mb-6">Settings</h2>
-            
             <div class="w-full bg-slate-800/80 p-4 rounded-xl border border-slate-700 mb-4 text-left">
                 <div class="mb-5">
                     <div class="flex justify-between text-xs font-bold mb-2"><span>Look Sensitivity</span><span id="lbl-sens" class="text-emerald-400">1.0</span></div>
@@ -168,27 +187,7 @@
                     <input type="range" id="set-vol" min="0" max="100" value="100" oninput="document.getElementById('lbl-vol').innerText = this.value + '%'">
                 </div>
             </div>
-
-            <button id="btn-close-settings" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors mt-2">
-                Back to Menu
-            </button>
-        </div>
-    </div>
-
-    <!-- Mobile Controls -->
-    <div id="mobile-controls" class="mobile-controls">
-        <div class="mobile-pad left">
-            <div class="move-grid">
-                <button class="move-btn" data-key="w">W</button><button class="move-btn" data-key="a">A</button>
-                <button class="move-btn" data-key="s">S</button><button class="move-btn" data-key="d">D</button>
-            </div>
-        </div>
-        <div id="mobile-look-pad" class="look-pad" aria-label="Look pad"></div>
-        <div class="mobile-pad right">
-            <button class="action-btn jump" data-action="jump">Jump</button>
-            <button class="action-btn attack" data-action="attack">Attack</button>
-            <button class="action-btn door" data-action="door">Door</button>
-            <button class="action-btn chalk" data-action="chalk">Chalk</button>
+            <button id="btn-close-settings" class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-sm transition-colors mt-2">Back to Menu</button>
         </div>
     </div>
 
@@ -197,8 +196,8 @@
         let isMultiplayer = false, myPlayerId = null, isHost = false, activeRoomCode = "";
         let peerPlayers = {}, peerMeshes = {};
         
-        let currentMapSettings = { classrooms: 1, cafeterias: 1 };
-        let userSettings = { sensitivity: 1.0, volume: 1.0 }; // Global Settings state
+        let currentMapSettings = { classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 };
+        let userSettings = { sensitivity: 1.0, volume: 1.0 }; 
         const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0, isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900 };
 
         class SoundFX {
@@ -214,10 +213,7 @@
                 if (!this.ctx) return;
                 const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
                 osc.type = type; osc.frequency.setValueAtTime(f1, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + t);
-                
-                let finalVol = v * userSettings.volume;
-                if (finalVol <= 0) return;
-
+                let finalVol = v * userSettings.volume; if (finalVol <= 0) return;
                 gain.gain.setValueAtTime(finalVol, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + t);
                 osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + t);
             }
@@ -226,81 +222,90 @@
 
         let scene, camera, renderer, gameState = 'MENU', matchTime = 99, timerInterval = null;
         let fpvWeaponGroup, fpvRulerMesh;
+        let spectatorIndex = 0; // Tracks which player we are currently spectating
+        
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
-        const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0 };
+        const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0, isSpectator: false };
         const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false, prevX: false };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, mesh: null, head: null };
-        const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], particles = [], chalkProjectiles = [];
+        const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], chalkProjectiles = [];
         let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
 
         // --- GLOBAL TEXTURE LOADER ---
         let textures = { floor: null, wall: null };
 
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast'; toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 500); }, 3000);
+        }
+
         // --- UI LOGIC ---
         document.getElementById('tab-single').onclick = () => {
-            isMultiplayer = false;
-            document.getElementById('panel-single').classList.remove('hidden'); document.getElementById('panel-multi').classList.add('hidden');
-            document.getElementById('map-settings').classList.remove('hidden');
+            isMultiplayer = false; document.getElementById('panel-single').classList.remove('hidden'); document.getElementById('panel-multi').classList.add('hidden'); document.getElementById('map-settings').classList.remove('hidden');
             document.getElementById('tab-single').classList.replace('bg-slate-800', 'bg-emerald-600'); document.getElementById('tab-single').classList.replace('text-slate-300', 'text-white');
             document.getElementById('tab-multi').classList.replace('bg-emerald-600', 'bg-slate-800'); document.getElementById('tab-multi').classList.replace('text-white', 'text-slate-300');
         };
         document.getElementById('tab-multi').onclick = () => {
-            isMultiplayer = true;
-            document.getElementById('panel-multi').classList.remove('hidden'); document.getElementById('panel-single').classList.add('hidden');
-            document.getElementById('map-settings').classList.remove('hidden');
+            isMultiplayer = true; document.getElementById('panel-multi').classList.remove('hidden'); document.getElementById('panel-single').classList.add('hidden'); document.getElementById('map-settings').classList.remove('hidden');
             document.getElementById('tab-multi').classList.replace('bg-slate-800', 'bg-emerald-600'); document.getElementById('tab-multi').classList.replace('text-slate-300', 'text-white');
             document.getElementById('tab-single').classList.replace('bg-emerald-600', 'bg-slate-800'); document.getElementById('tab-single').classList.replace('text-white', 'text-slate-300');
         };
-        document.getElementById('btn-show-join').onclick = () => { 
-            document.getElementById('multi-actions').classList.add('hidden'); 
-            document.getElementById('join-box').classList.remove('hidden'); 
-            document.getElementById('map-settings').classList.add('hidden'); 
-        };
+        document.getElementById('btn-show-join').onclick = () => { document.getElementById('multi-actions').classList.add('hidden'); document.getElementById('join-box').classList.remove('hidden'); document.getElementById('map-settings').classList.add('hidden'); };
+        
         document.getElementById('btn-create-room').onclick = () => {
-            const settings = { classrooms: parseInt(document.getElementById('set-classrooms').value), cafeterias: parseInt(document.getElementById('set-cafeterias').value) };
-            socket.emit('create_room', { username: document.getElementById('input-username').value, settings });
-            document.getElementById('map-settings').classList.add('hidden');
+            const settings = { classrooms: parseInt(document.getElementById('set-classrooms').value), bathrooms: parseInt(document.getElementById('set-bathrooms').value), computers: parseInt(document.getElementById('set-computers').value), cafeterias: parseInt(document.getElementById('set-cafeterias').value) };
+            socket.emit('create_room', { username: document.getElementById('input-username').value, settings }); document.getElementById('map-settings').classList.add('hidden');
         };
-        document.getElementById('btn-join-room').onclick = () => {
-            socket.emit('join_room', { roomCode: document.getElementById('input-room-code').value, username: document.getElementById('input-username').value });
-        };
+        
+        document.getElementById('btn-join-room').onclick = () => { socket.emit('join_room', { roomCode: document.getElementById('input-room-code').value, username: document.getElementById('input-username').value }); };
         document.getElementById('btn-host-start').onclick = () => socket.emit('start_game');
-
-        // Settings Menu Nav
-        document.getElementById('btn-open-settings').onclick = () => {
-            document.getElementById('main-content-box').classList.add('hidden');
-            document.getElementById('settings-box').classList.remove('hidden');
-        };
+        
+        document.getElementById('btn-open-settings').onclick = () => { document.getElementById('main-content-box').classList.add('hidden'); document.getElementById('settings-box').classList.remove('hidden'); };
         document.getElementById('btn-close-settings').onclick = () => {
-            userSettings.sensitivity = parseFloat(document.getElementById('set-sens').value);
-            userSettings.volume = parseInt(document.getElementById('set-vol').value) / 100;
-            document.getElementById('settings-box').classList.add('hidden');
-            document.getElementById('main-content-box').classList.remove('hidden');
+            userSettings.sensitivity = parseFloat(document.getElementById('set-sens').value); userSettings.volume = parseInt(document.getElementById('set-vol').value) / 100;
+            document.getElementById('settings-box').classList.add('hidden'); document.getElementById('main-content-box').classList.remove('hidden');
         };
 
-        // Socket logic
+        // --- SOCKET LOGIC ---
         socket.on('room_created', (data) => { activeRoomCode = data.roomCode; myPlayerId = data.playerId; isHost = true; currentMapSettings = data.settings; });
-        socket.on('room_joined', (data) => { activeRoomCode = data.roomCode; myPlayerId = data.playerId; isHost = false; currentMapSettings = data.settings; });
+        socket.on('room_joined', (data) => { 
+            activeRoomCode = data.roomCode; myPlayerId = data.playerId; isHost = false; currentMapSettings = data.settings; peerPlayers = data.players;
+            if (data.isSpectator) {
+                player.isSpectator = true;
+                Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId && !peerPlayers[id].isSpectator) createPeerMesh(id, peerPlayers[id].color); });
+                startMatch();
+            } else {
+                document.getElementById('multi-actions').classList.add('hidden'); document.getElementById('join-box').classList.add('hidden'); document.getElementById('lobby-container').classList.remove('hidden');
+                document.getElementById('display-room-code').innerText = activeRoomCode;
+            }
+        });
+        socket.on('spectator_joined', (name) => { showToast(`👀 ${name} joined to spectate`); });
         socket.on('lobby_update', (room) => {
-            document.getElementById('multi-actions').classList.add('hidden'); document.getElementById('join-box').classList.add('hidden'); document.getElementById('lobby-container').classList.remove('hidden');
-            document.getElementById('display-room-code').innerText = activeRoomCode;
+            if (player.isSpectator) return; // Keep spectators in game
             const list = document.getElementById('player-list'); list.innerHTML = '';
-            Object.values(room.players).forEach(p => { list.innerHTML += `<div class="text-white text-sm bg-slate-700 p-2 rounded mb-1 border-l-4" style="border-color:${p.color}">${p.username} ${p.isHost ? '<span class="text-yellow-300">(HOST)</span>' : ''}</div>`; });
+            Object.values(room.players).forEach(p => { if(!p.isSpectator) list.innerHTML += `<div class="text-white text-sm bg-slate-700 p-2 rounded mb-1 border-l-4" style="border-color:${p.color}">${p.username} ${p.isHost ? '<span class="text-yellow-300">(HOST)</span>' : ''}</div>`; });
             document.getElementById('btn-host-start').classList.toggle('hidden', !isHost); document.getElementById('waiting-msg').classList.toggle('hidden', isHost);
         });
         socket.on('match_started', (data) => {
             peerPlayers = data.players; currentMapSettings = data.settings;
-            Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId) createPeerMesh(id, peerPlayers[id].color); });
+            player.isSpectator = false; // Reset to active player
+            Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId && !peerPlayers[id].isSpectator && !peerMeshes[id]) createPeerMesh(id, peerPlayers[id].color); });
             startMatch();
         });
-        socket.on('peer_update', (data) => { if (peerPlayers[data.id]) Object.assign(peerPlayers[data.id], data); });
+        socket.on('peer_update', (data) => { 
+            if (peerPlayers[data.id]) Object.assign(peerPlayers[data.id], data); 
+            else peerPlayers[data.id] = data; // Catch mid-match creations
+        });
         socket.on('player_damaged', (data) => {
-            if (data.targetId === myPlayerId) {
+            if (data.targetId === myPlayerId && !player.isSpectator) {
                 player.hp = data.hp; document.getElementById('hurt-overlay').style.opacity = '1'; setTimeout(() => document.getElementById('hurt-overlay').style.opacity = '0', 250); updateHUD();
                 if (player.hp <= 0) endGame('YOU WERE ELIMINATED!', false);
             }
         });
-        socket.on('player_left', (id) => { if(peerMeshes[id]) { scene.remove(peerMeshes[id].group); delete peerMeshes[id]; delete peerPlayers[id]; } });
+        socket.on('player_left', (id) => { if(peerMeshes[id]) { scene.remove(peerMeshes[id].group); delete peerMeshes[id]; } delete peerPlayers[id]; });
 
         // --- SCENE INITIALIZATION ---
         function initScene() {
@@ -324,18 +329,7 @@
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(10, 20, -10); dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 100;
-            dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50; dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
             scene.add(dirLight);
-
-            // Load Custom Textures from assets folder
-            const texLoader = new THREE.TextureLoader();
-            
-            textures.floor = texLoader.load('assets/floor_tile.jpg', undefined, undefined, () => console.warn("Could not load assets/floor_tile.jpg"));
-            textures.floor.wrapS = THREE.RepeatWrapping; textures.floor.wrapT = THREE.RepeatWrapping; textures.floor.encoding = THREE.sRGBEncoding;
-            
-            textures.wall = texLoader.load('assets/wall.jpeg', undefined, undefined, () => console.warn("Could not load assets/wall.jpeg"));
-            textures.wall.wrapS = THREE.RepeatWrapping; textures.wall.wrapT = THREE.RepeatWrapping; textures.wall.encoding = THREE.sRGBEncoding;
 
             buildFPVWeapon();
             buildAIFighter();
@@ -357,6 +351,7 @@
         }
 
         function createPeerMesh(id, color) {
+            if (peerMeshes[id]) return;
             const grp = new THREE.Group();
             const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 0.4), new THREE.MeshStandardMaterial({color: new THREE.Color(color), roughness: 0.6}));
             body.position.y = 0.6; body.castShadow = true; grp.add(body);
@@ -366,74 +361,47 @@
         }
 
         // --- PROCEDURAL MAP GENERATION ---
-
-        function getTex(type, repeatX, repeatY) {
-            if (!textures[type]) return null;
-            const tex = textures[type].clone();
-            tex.needsUpdate = true;
-            tex.repeat.set(repeatX, repeatY);
-            return tex;
+        function getTex(url, rx, ry) {
+            const tex = new THREE.TextureLoader().load(url, undefined, undefined, () => console.warn(`Failed to load ${url}`));
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding; tex.repeat.set(rx, ry); return tex;
         }
-
         function createWall(w, h, d, x, y, z, tint = 0xffffff) {
-            // Apply the custom wall texture, mapping it based on the physical size of the wall so it isn't stretched
-            const wMap = getTex('wall', Math.max(w, d) / 4, h / 4);
-            const mat = new THREE.MeshStandardMaterial({ color: tint, map: wMap, roughness: 0.8 });
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-            mesh.position.set(x, y, z);
-            mesh.receiveShadow = true;
-            mesh.castShadow = true;
-            scene.add(mesh);
-            return mesh;
+            const mat = new THREE.MeshStandardMaterial({ color: tint, map: getTex('assets/wall.jpeg', Math.max(w, d) / 4, h / 4), roughness: 0.8 });
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh);
         }
-
         function createChalkboardTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#163824'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 42px "Product Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('CLASSROOM 101 - FPV FIGHT ARENA', canvas.width / 2, 80);
-            ctx.strokeStyle = '#81c784'; ctx.lineWidth = 4; ctx.strokeRect(60, 110, canvas.width - 120, 350);
-            ctx.font = '22px "Press Start 2P", monospace'; ctx.fillStyle = '#fde047'; ctx.fillText('PROCEDURAL EDITION', canvas.width / 2, 190);
-            ctx.font = '22px sans-serif'; ctx.fillStyle = '#e2e8f0'; ctx.fillText('• Explore the dynamically generated map!', canvas.width / 2, 260);
-            return new THREE.CanvasTexture(canvas);
+            ctx.fillStyle = '#163824'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#ffffff'; ctx.font = 'bold 42px "Product Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('CLASSROOM 101 - FPV FIGHT ARENA', canvas.width / 2, 80);
+            ctx.strokeStyle = '#81c784'; ctx.lineWidth = 4; ctx.strokeRect(60, 110, canvas.width - 120, 350); ctx.font = '22px "Press Start 2P", monospace'; ctx.fillStyle = '#fde047'; ctx.fillText('PROCEDURAL EDITION', canvas.width / 2, 190); return new THREE.CanvasTexture(canvas);
         }
-
         function addStaticObstacle(x, z, w, d) { staticObstacles.push({ x, z, halfWidth: w, halfDepth: d }); }
         function addFurnitureSurface(x, z, w, d, topY = 0) { furnitureSurfaces.push({ x, z, halfWidth: w, halfDepth: d, topY }); }
-        
         function createDoor(x, z, rotY, doorId) {
             const doorPivot = new THREE.Group(); doorPivot.position.set(x, 0, z); doorPivot.rotation.y = rotY;
             const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
             doorMesh.position.set(1.3, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
-            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 }));
-            glass.position.set(1.3, 2.8, 0.09); doorPivot.add(glass);
-            scene.add(doorPivot);
-            const d = { id: doorId, pivot: doorPivot, isOpen: false, targetRot: rotY, baseRot: rotY, x, z }; doors.push(d); return d;
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); glass.position.set(1.3, 2.8, 0.09); doorPivot.add(glass);
+            scene.add(doorPivot); const d = { id: doorId, pivot: doorPivot, isOpen: false, targetRot: rotY, baseRot: rotY, x, z }; doors.push(d); return d;
         }
 
         function buildDynamicMap(settings) {
             for (let i = scene.children.length - 1; i >= 0; i--) {
-                const obj = scene.children[i];
-                if (obj.isLight || obj === camera || obj === ai.mesh) continue;
-                let isPeer = false; Object.values(peerMeshes).forEach(pm => { if (pm.group === obj) isPeer = true; });
-                if (isPeer) continue;
+                const obj = scene.children[i]; if (obj.isLight || obj === camera || obj === ai.mesh) continue;
+                let isPeer = false; Object.values(peerMeshes).forEach(pm => { if (pm.group === obj) isPeer = true; }); if (isPeer) continue;
                 scene.remove(obj);
             }
             furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0;
 
-            const cCount = settings.classrooms; const fCount = settings.cafeterias;
-            const slotSize = 30; const totalSlots = Math.max(cCount, fCount) || 1;
+            const cCount = settings.classrooms || 1; const bCount = settings.bathrooms || 0; const pCount = settings.computers || 0; const fCount = settings.cafeterias || 1;
+            const totalNorth = cCount + bCount + pCount; const slotSize = 30; const totalSlots = Math.max(totalNorth, fCount) || 1;
             const hallLength = totalSlots * slotSize; const centerX = (totalSlots - 1) * 15;
 
             worldBounds = { minX: -15, maxX: hallLength - 15, minZ: -10, maxZ: 45.5 };
             
-            // Hallway Floor & Ceiling
-            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: getTex('floor', hallLength/4, 2), roughness: 0.7, metalness: 0.1, color: 0xe2e8f0 }));
+            const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', hallLength/4, 2), roughness: 0.7, metalness: 0.1, color: 0xe2e8f0 }));
             hallFloor.position.set(centerX, 0, 12.5); hallFloor.rotation.x = -Math.PI / 2; hallFloor.receiveShadow = true; scene.add(hallFloor);
-            
-            const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-            hallCeil.position.set(centerX, 5, 12.5); hallCeil.rotation.x = Math.PI / 2; scene.add(hallCeil);
+            const hallCeil = new THREE.Mesh(new THREE.PlaneGeometry(hallLength, 6), new THREE.MeshStandardMaterial({ color: 0x1e293b })); hallCeil.position.set(centerX, 5, 12.5); hallCeil.rotation.x = Math.PI / 2; scene.add(hallCeil);
 
-            // Hallway ends
             createWall(0.4, 5, 6, -15, 2.5, 12.5, 0xe2e8f0); addStaticObstacle(-15, 12.5, 0.4, 3);
             createWall(0.4, 5, 6, hallLength - 15, 2.5, 12.5, 0xe2e8f0); addStaticObstacle(hallLength - 15, 12.5, 0.4, 3);
 
@@ -441,16 +409,27 @@
                 let offsetX = i * slotSize;
                 const hLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe })); hLight.position.set(offsetX, 4.95, 12.5); scene.add(hLight);
 
+                // NORTH SIDE (Classrooms -> Bathrooms -> Computer Labs)
                 if (i < cCount) {
                     buildClassroom(offsetX, 0, i);
                     createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
                     createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
-                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0);
-                    createDoor(offsetX - 1.3, 9.5, 0, `door_c_${i}`);
+                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.3, 9.5, 0, `door_c_${i}`);
+                } else if (i < cCount + bCount) {
+                    buildBathroom(offsetX, 0, i);
+                    createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
+                    createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
+                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.3, 9.5, 0, `door_b_${i}`);
+                } else if (i < totalNorth) {
+                    buildComputerRoom(offsetX, 0, i);
+                    createWall(13.5, 5, 0.4, offsetX - 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX - 8.25, 9.5, 6.75, 0.2);
+                    createWall(13.5, 5, 0.4, offsetX + 8.25, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX + 8.25, 9.5, 6.75, 0.2);
+                    createWall(3, 1.2, 0.4, offsetX, 4.4, 9.5, 0xe2e8f0); createDoor(offsetX - 1.3, 9.5, 0, `door_pc_${i}`);
                 } else {
                     createWall(30, 5, 0.4, offsetX, 2.5, 9.5, 0xe2e8f0); addStaticObstacle(offsetX, 9.5, 15, 0.3);
                 }
 
+                // SOUTH SIDE (Cafeterias)
                 if (i < fCount) {
                     buildCafeteria(offsetX, 25, i);
                     createWall(12, 5, 0.4, offsetX - 9, 2.5, 15.5, 0xe2e8f0); addStaticObstacle(offsetX - 9, 15.5, 6, 0.2);
@@ -464,16 +443,12 @@
         }
 
         function buildClassroom(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('floor', 8, 6), roughness: 0.7, color: 0xcccccc }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.7, color: 0xcccccc }));
             floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-            ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
-
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
             createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf8fafc); addStaticObstacle(x, z - 10, 13, 0.4);
             createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
             createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
-
             if(idx === 0) { const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(x, 2.8, z - 9.75); scene.add(board); }
 
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }), metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
@@ -487,13 +462,54 @@
             });
         }
 
-        function buildCafeteria(x, z, idx) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: getTex('floor', 10, 12), roughness: 0.6, color: 0xffffee }));
-            floor.position.set(x, 0, z + 5.5); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-            
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-            ceil.position.set(x, 6, z + 5.5); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
+        function buildBathroom(x, z, idx) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.2, color: 0xccddff }));
+            floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
+            createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf1f5f9); addStaticObstacle(x, z - 10, 13, 0.4);
+            createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf1f5f9); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
+            createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf1f5f9); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
 
+            for(let i=0; i<3; i++) {
+                let sx = x - 9 + (i*4);
+                createWall(0.2, 4, 4, sx, 2, z - 8, 0x94a3b8); addStaticObstacle(sx, z - 8, 0.1, 2);
+                const toilet = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), new THREE.MeshStandardMaterial({color:0xffffff}));
+                toilet.position.set(sx + 2, 0.5, z - 9); toilet.castShadow = true; scene.add(toilet); addFurnitureSurface(sx + 2, z - 9, 0.5, 0.75, 1.0);
+            }
+            
+            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
+            sinkBase.position.set(x + 8, 0.5, z - 9); sinkBase.castShadow = true; scene.add(sinkBase); addFurnitureSurface(x + 8, z - 9, 3, 0.75, 1.0);
+            createWall(6, 2, 0.1, x + 8, 2.5, z - 9.7, 0x94a3b8); 
+        }
+
+        function buildComputerRoom(x, z, idx) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.6, color: 0x99aadd }));
+            floor.position.set(x, 0, z - 0.25); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 19.5), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(x, 5, z - 0.25); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
+            createWall(26, 5, 0.4, x, 2.5, z - 10, 0xf8fafc); addStaticObstacle(x, z - 10, 13, 0.4);
+            createWall(0.4, 5, 19.5, x - 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x - 13, z - 0.25, 0.4, 10);
+            createWall(0.4, 5, 19.5, x + 13, 2.5, z - 0.25, 0xf8fafc); addStaticObstacle(x + 13, z - 0.25, 0.4, 10);
+
+            const deskMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }), pcMat = new THREE.MeshStandardMaterial({ color: 0x111827 }), screenMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 0.5 });
+            const rows = [-4, 2];
+            rows.forEach(rz => {
+                const deskGrp = new THREE.Group(); deskGrp.position.set(x, 0, z + rz);
+                const table = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; deskGrp.add(table);
+                [ -9.5, 0, 9.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; deskGrp.add(leg); });
+                
+                for(let c=-8; c<=8; c+=4) {
+                    const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); deskGrp.add(monitor);
+                    const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); deskGrp.add(screen);
+                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.3), pcMat); base.position.set(c, 1.4, -0.6); deskGrp.add(base);
+                }
+                scene.add(deskGrp); addFurnitureSurface(x, z + rz, 10, 1.25, 1.2);
+            });
+        }
+
+        function buildCafeteria(x, z, idx) {
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 10, 12), roughness: 0.6, color: 0xffffee }));
+            floor.position.set(x, 0, z + 5.5); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(26, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(x, 6, z + 5.5); ceil.rotation.x = Math.PI / 2; scene.add(ceil);
             createWall(26, 6, 0.4, x, 3, z + 20.5, 0xffedd5); addStaticObstacle(x, z + 20.5, 13, 0.4);
             createWall(0.4, 6, 30, x - 13, 3, z + 5.5, 0xffedd5); addStaticObstacle(x - 13, z + 5.5, 0.4, 15);
             createWall(0.4, 6, 30, x + 13, 3, z + 5.5, 0xffedd5); addStaticObstacle(x + 13, z + 5.5, 0.4, 15);
@@ -508,47 +524,30 @@
                     scene.add(table); addFurnitureSurface(x + tx, z + tz, 1.4, 1.1, 1.2);
                 }
             }
-
-            const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); 
-            vend.position.set(x + 10, 1.9, z + 18); vend.castShadow=true; scene.add(vend); addStaticObstacle(x + 10, z + 18, 1.1, 0.7);
+            const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); vend.position.set(x + 10, 1.9, z + 18); vend.castShadow=true; scene.add(vend); addStaticObstacle(x + 10, z + 18, 1.1, 0.7);
         }
 
         // --- GAMEPLAY LOGIC ---
         function updateGamepad() {
+            if (player.isSpectator) return;
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let gp = null;
-            for (let i = 0; i < gamepads.length; i++) { if (gamepads[i]) { gp = gamepads[i]; break; } }
+            let gp = null; for (let i = 0; i < gamepads.length; i++) { if (gamepads[i]) { gp = gamepads[i]; break; } }
             if (!gp) { controllerState.moveX = 0; controllerState.moveY = 0; return; }
 
             const deadzone = 0.15;
-            let lx = gp.axes[0] || 0; let ly = gp.axes[1] || 0;
-            if (Math.abs(lx) < deadzone) lx = 0; if (Math.abs(ly) < deadzone) ly = 0;
+            let lx = gp.axes[0] || 0; let ly = gp.axes[1] || 0; if (Math.abs(lx) < deadzone) lx = 0; if (Math.abs(ly) < deadzone) ly = 0;
             controllerState.moveX = lx; controllerState.moveY = ly;
 
-            let rx = gp.axes[2] || 0; let ry = gp.axes[3] || 0;
-            if (Math.abs(rx) < deadzone) rx = 0; if (Math.abs(ry) < deadzone) ry = 0;
-            
-            if (gameState === 'PLAYING') { 
-                player.yaw -= rx * 0.035 * userSettings.sensitivity; 
-                player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (ry * 0.035 * userSettings.sensitivity))); 
-            }
+            let rx = gp.axes[2] || 0; let ry = gp.axes[3] || 0; if (Math.abs(rx) < deadzone) rx = 0; if (Math.abs(ry) < deadzone) ry = 0;
+            if (gameState === 'PLAYING') { player.yaw -= rx * 0.035 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (ry * 0.035 * userSettings.sensitivity))); }
 
             let ltValue = 0; if (gp.buttons[6]) { ltValue = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : gp.buttons[6]; }
-            const ltPressed = ltValue > 0.2;
-            if (ltPressed && !controllerState.prevLT) triggerPlayerAttack();
-            controllerState.prevLT = ltPressed;
-
+            const ltPressed = ltValue > 0.2; if (ltPressed && !controllerState.prevLT) triggerPlayerAttack(); controllerState.prevLT = ltPressed;
             let rtValue = 0; if (gp.buttons[7]) { rtValue = typeof gp.buttons[7] === 'object' ? gp.buttons[7].value : gp.buttons[7]; }
-            const rtPressed = rtValue > 0.2;
-            if (rtPressed && !controllerState.prevRT) shootChalk();
-            controllerState.prevRT = rtPressed;
-
-            const buttonA = gp.buttons[0] && gp.buttons[0].pressed;
-            if (buttonA && !controllerState.prevA && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
+            const rtPressed = rtValue > 0.2; if (rtPressed && !controllerState.prevRT) shootChalk(); controllerState.prevRT = rtPressed;
+            const buttonA = gp.buttons[0] && gp.buttons[0].pressed; if (buttonA && !controllerState.prevA && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
             controllerState.prevA = buttonA;
-
-            const buttonX = gp.buttons[2] && gp.buttons[2].pressed;
-            if (buttonX && !controllerState.prevX && gameState === 'PLAYING') { let d = checkDoorProximity(); if (d) toggleDoor(d); }
+            const buttonX = gp.buttons[2] && gp.buttons[2].pressed; if (buttonX && !controllerState.prevX && gameState === 'PLAYING') { let d = checkDoorProximity(); if (d) toggleDoor(d); }
             controllerState.prevX = buttonX;
         }
 
@@ -559,7 +558,7 @@
         function toggleDoor(d) { d.isOpen = !d.isOpen; soundFX.playDoorSqueak(); }
 
         function triggerPlayerAttack() {
-            if (player.attackCooldown > 0 || gameState !== 'PLAYING') return;
+            if (player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
             player.attackCooldown = 0.45; soundFX.playSwing();
             const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
             const hitPos = player.position.clone().add(new THREE.Vector3(0, 0.3, 0)).add(forward.clone().multiplyScalar(1.8));
@@ -571,19 +570,19 @@
                 }
             } else {
                 socket.emit('player_attack', { x: hitPos.x, y: hitPos.y, z: hitPos.z }); let hitId = null;
-                Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId) { const pPos = new THREE.Vector3(peerPlayers[id].x, peerPlayers[id].y, peerPlayers[id].z); if (hitPos.distanceTo(pPos) < 2.0) hitId = id; } });
+                Object.keys(peerPlayers).forEach(id => { if (id !== myPlayerId && !peerPlayers[id].isSpectator) { const pPos = new THREE.Vector3(peerPlayers[id].x, peerPlayers[id].y, peerPlayers[id].z); if (hitPos.distanceTo(pPos) < 2.0) hitId = id; } });
                 if (hitId) { socket.emit('player_hit', { targetId: hitId, damage: 15 }); showHitPop(hitPos, '-15'); soundFX.playHit(); }
             }
             updateHUD();
         }
 
         function shootChalk() {
-            if (player.chalkCooldown > 0 || gameState !== 'PLAYING') return;
-            player.chalkCooldown = 10; document.getElementById('chalk-status').innerText = 'Chalk: RECHARGING';
+            if (player.chalkCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
+            player.chalkCooldown = 2.0; document.getElementById('chalk-status').innerText = 'Chalk: RECHARGING';
             const dir = new THREE.Vector3( -Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch) ).normalize();
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 }));
             mesh.position.copy(player.position).add(new THREE.Vector3(0, 0.15, 0)); scene.add(mesh);
-            chalkProjectiles.push({ mesh, velocity: dir.multiplyScalar(16), life: 1.8 });
+            chalkProjectiles.push({ mesh, velocity: dir.multiplyScalar(22), life: 1.2 });
         }
 
         function showHitPop(pos, text) {
@@ -600,32 +599,42 @@
 
         function startMatch() {
             soundFX.init();
-            buildDynamicMap(isMultiplayer ? currentMapSettings : { classrooms: parseInt(document.getElementById('set-classrooms').value), cafeterias: parseInt(document.getElementById('set-cafeterias').value) });
+            buildDynamicMap(isMultiplayer ? currentMapSettings : { classrooms: parseInt(document.getElementById('set-classrooms').value), bathrooms: parseInt(document.getElementById('set-bathrooms').value), computers: parseInt(document.getElementById('set-computers').value), cafeterias: parseInt(document.getElementById('set-cafeterias').value) });
             
-            document.getElementById('main-menu').classList.add('hidden'); document.getElementById('ui-layer').classList.remove('opacity-0'); document.getElementById('crosshair').classList.remove('hidden');
-            player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
+            document.getElementById('main-menu').classList.add('hidden');
             
-            if (!isMultiplayer) { ai.position.set(0, 0, -4); ai.hp = 100; ai.mesh.visible = true; ai.mesh.rotation.x = 0; document.getElementById('ai-hp-container').classList.remove('hidden'); } 
-            else { document.getElementById('ai-hp-container').classList.add('hidden'); }
-            
-            updateHUD(); gameState = 'PLAYING';
-            const ann = document.getElementById('announcer-text'); ann.innerText = 'CLASS IS IN SESSION!'; ann.style.transform = 'scale(1)'; setTimeout(() => ann.style.transform = 'scale(0)', 1500);
-            
-            syncMobileControls();
-            document.body.requestPointerLock?.();
-            
+            if (player.isSpectator) {
+                gameState = 'SPECTATING';
+                document.getElementById('spectator-ui').classList.remove('hidden');
+                document.getElementById('ui-layer').classList.add('opacity-0');
+                document.getElementById('crosshair').classList.add('hidden');
+                if (fpvWeaponGroup) fpvWeaponGroup.visible = false;
+            } else {
+                gameState = 'PLAYING';
+                document.getElementById('ui-layer').classList.remove('opacity-0'); 
+                document.getElementById('crosshair').classList.remove('hidden');
+                document.getElementById('spectator-ui').classList.add('hidden');
+                if (fpvWeaponGroup) fpvWeaponGroup.visible = true;
+                player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
+                if (!isMultiplayer) { ai.position.set(0, 0, -4); ai.hp = 100; ai.mesh.visible = true; ai.mesh.rotation.x = 0; document.getElementById('ai-hp-container').classList.remove('hidden'); } else { document.getElementById('ai-hp-container').classList.add('hidden'); }
+                updateHUD();
+                syncMobileControls();
+                document.body.requestPointerLock?.();
+                const ann = document.getElementById('announcer-text'); ann.innerText = 'CLASS IS IN SESSION!'; ann.style.transform = 'scale(1)'; setTimeout(() => ann.style.transform = 'scale(0)', 1500);
+            }
+
             clearInterval(timerInterval); matchTime = 99;
             timerInterval = setInterval(() => {
-                if(gameState !== 'PLAYING') return clearInterval(timerInterval);
+                if(gameState !== 'PLAYING' && gameState !== 'SPECTATING') return clearInterval(timerInterval);
                 matchTime--; document.getElementById('timer').innerText = matchTime;
-                if(matchTime <= 0) endGame("TIME'S UP!", true);
+                if(matchTime <= 0 && gameState === 'PLAYING') endGame("TIME'S UP!", true);
             }, 1000);
         }
 
         function endGame(msg, won) {
             gameState = 'GAMEOVER'; document.body.exitPointerLock?.(); won ? soundFX.playWin() : soundFX.playLose();
             const ann = document.getElementById('announcer-text'); ann.innerText = msg; ann.style.transform = 'scale(1)'; setTimeout(() => ann.style.transform = 'scale(0)', 2500);
-            setTimeout(() => { document.getElementById('main-menu').classList.remove('hidden'); document.getElementById('crosshair').classList.add('hidden'); syncMobileControls(); }, 3000);
+            setTimeout(() => { document.getElementById('main-menu').classList.remove('hidden'); document.getElementById('crosshair').classList.add('hidden'); document.getElementById('spectator-ui').classList.add('hidden'); syncMobileControls(); }, 3000);
         }
 
         // --- MOBILE CONTROLS & EVENTS ---
@@ -654,13 +663,10 @@
 
             const lpad = document.getElementById('mobile-look-pad');
             if(lpad) {
-                lpad.addEventListener('pointerdown', (e) => {
-                    if (gameState !== 'PLAYING') return; mobileState.lookPointerId = e.pointerId; mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY; lpad.classList.add('active');
-                });
+                lpad.addEventListener('pointerdown', (e) => { if (gameState !== 'PLAYING') return; mobileState.lookPointerId = e.pointerId; mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY; lpad.classList.add('active'); });
                 lpad.addEventListener('pointermove', (e) => {
                     if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING') return;
-                    player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035 * userSettings.sensitivity; 
-                    player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035 * userSettings.sensitivity));
+                    player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035 * userSettings.sensitivity));
                     mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY;
                 });
                 const elook = (e) => { if (mobileState.lookPointerId === e.pointerId) { mobileState.lookPointerId = null; lpad.classList.remove('active'); } };
@@ -668,13 +674,21 @@
             }
         }
 
-        document.addEventListener('click', () => { if (gameState==='PLAYING' && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); });
-        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { 
-            player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; 
-            player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); 
-        } });
+        // Cycle Spectator logic
+        function cycleSpectator() {
+            if (gameState !== 'SPECTATING') return;
+            const validTargets = Object.values(peerPlayers).filter(p => !p.isSpectator && p.hp > 0);
+            if (validTargets.length > 0) spectatorIndex = (spectatorIndex + 1) % validTargets.length;
+        }
+
+        document.addEventListener('click', () => { 
+            if (gameState === 'SPECTATING') cycleSpectator();
+            else if (gameState==='PLAYING' && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); 
+        });
+        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); } });
         document.addEventListener('mousedown', (e) => { if(document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
         window.addEventListener('keydown', (e) => {
+            if (gameState === 'SPECTATING') { if (e.code === 'Space' || e.code === 'Enter') cycleSpectator(); return; }
             keys[e.key.toLowerCase()] = true;
             if (e.key.toLowerCase() === 'e' && gameState === 'PLAYING') { let d = checkDoorProximity(); if(d) toggleDoor(d); }
             if (e.key.toLowerCase() === 'q' && gameState === 'PLAYING' && !e.repeat) shootChalk();
@@ -688,29 +702,48 @@
         function animate() {
             requestAnimationFrame(animate);
             const now = performance.now(); const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1); animate.lastTime = now;
-            
             updateGamepad();
 
-            if (gameState === 'PLAYING') {
+            // Always interpolate network peers
+            if (isMultiplayer && (gameState === 'PLAYING' || gameState === 'SPECTATING')) {
+                Object.keys(peerPlayers).forEach(id => {
+                    if (id !== myPlayerId && peerMeshes[id] && !peerPlayers[id].isSpectator) {
+                        const pm = peerMeshes[id].group; const pData = peerPlayers[id];
+                        pm.position.lerp(new THREE.Vector3(pData.x, pData.y - EYE_HEIGHT, pData.z), 0.2); 
+                        pm.rotation.y = pData.yaw;
+                    }
+                });
+            }
+
+            if (gameState === 'SPECTATING') {
+                const validTargets = Object.values(peerPlayers).filter(p => !p.isSpectator && p.hp > 0);
+                if (validTargets.length > 0) {
+                    const target = validTargets[spectatorIndex % validTargets.length];
+                    document.getElementById('spectate-name').innerText = `SPECTATING: ${target.username}`;
+                    camera.position.lerp(new THREE.Vector3(target.x, target.y, target.z), 0.2);
+                    camera.rotation.set(target.pitch, target.yaw, 0);
+                } else {
+                    document.getElementById('spectate-name').innerText = `SPECTATING: WAITING...`;
+                    camera.position.lerp(new THREE.Vector3(worldBounds.minX + 15, 5, 10), 0.05);
+                    camera.rotation.set(-0.2, 0, 0);
+                }
+            } 
+            else if (gameState === 'PLAYING') {
                 doors.forEach(d => { d.pivot.rotation.y = THREE.MathUtils.lerp(d.pivot.rotation.y, d.baseRot + (d.isOpen ? Math.PI/2 : 0), 2.5 * delta); });
                 
                 player.velocity.y += GRAVITY * delta;
                 let moveVec = new THREE.Vector3();
                 if (keys['w']) moveVec.z -= 1; if (keys['s']) moveVec.z += 1; if (keys['a']) moveVec.x -= 1; if (keys['d']) moveVec.x += 1;
-                
-                if (Math.abs(controllerState.moveY) > 0) moveVec.z += controllerState.moveY;
-                if (Math.abs(controllerState.moveX) > 0) moveVec.x += controllerState.moveX;
-
+                if (Math.abs(controllerState.moveY) > 0) moveVec.z += controllerState.moveY; if (Math.abs(controllerState.moveX) > 0) moveVec.x += controllerState.moveX;
                 if (moveVec.length() > 1) moveVec.normalize();
+                
                 let speed = moveVec.length() > 0 ? 8.0 : 0;
                 let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * speed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * speed);
-                player.position.addScaledVector(wishVel, delta);
-                player.position.y += player.velocity.y * delta;
+                player.position.addScaledVector(wishVel, delta); player.position.y += player.velocity.y * delta;
 
                 player.position.x = Math.max(worldBounds.minX + PLAYER_RADIUS, Math.min(worldBounds.maxX - PLAYER_RADIUS, player.position.x));
                 player.position.z = Math.max(worldBounds.minZ + PLAYER_RADIUS, Math.min(worldBounds.maxZ - PLAYER_RADIUS, player.position.z));
 
-                // 1. HORIZONTAL COLLISIONS (Walls)
                 staticObstacles.forEach(obs => {
                     let dx = player.position.x - obs.x, dz = player.position.z - obs.z;
                     if (Math.abs(dx) < obs.halfWidth + PLAYER_RADIUS && Math.abs(dz) < obs.halfDepth + PLAYER_RADIUS) {
@@ -720,8 +753,6 @@
                 });
 
                 let feetY = player.position.y - EYE_HEIGHT;
-
-                // 2. HORIZONTAL COLLISIONS (Furniture) -> Solid wall when below the top
                 furnitureSurfaces.forEach(f => {
                     if (feetY < f.topY - 0.1) {
                         let dx = player.position.x - f.x, dz = player.position.z - f.z;
@@ -732,31 +763,20 @@
                     }
                 });
 
-                // 3. VERTICAL COLLISIONS (Jumping/Landing on Furniture)
                 let groundedOnSurface = null;
                 furnitureSurfaces.forEach(f => {
-                    const dx = Math.abs(player.position.x - f.x);
-                    const dz = Math.abs(player.position.z - f.z);
+                    const dx = Math.abs(player.position.x - f.x); const dz = Math.abs(player.position.z - f.z);
                     const withinFootprint = dx <= f.halfWidth + PLAYER_RADIUS && dz <= f.halfDepth + PLAYER_RADIUS;
-                    
                     const aboveSurface = feetY >= f.topY - 0.25 && feetY <= f.topY + 0.65 && player.velocity.y <= 0.1;
                     if (withinFootprint && aboveSurface) groundedOnSurface = f;
                 });
 
-                if (groundedOnSurface) {
-                    player.position.y = groundedOnSurface.topY + EYE_HEIGHT;
-                    player.velocity.y = 0;
-                    player.isGrounded = true;
-                } else if (player.position.y <= EYE_HEIGHT) {
-                    player.position.y = EYE_HEIGHT;
-                    player.velocity.y = 0;
-                    player.isGrounded = true;
-                } else {
-                    player.isGrounded = false;
-                }
+                if (groundedOnSurface) { player.position.y = groundedOnSurface.topY + EYE_HEIGHT; player.velocity.y = 0; player.isGrounded = true; } 
+                else if (player.position.y <= EYE_HEIGHT) { player.position.y = EYE_HEIGHT; player.velocity.y = 0; player.isGrounded = true; } 
+                else { player.isGrounded = false; }
 
                 camera.position.copy(player.position); camera.rotation.set(player.pitch, player.yaw, 0);
-                document.getElementById('location-badge').innerText = player.position.z > 12 ? '🍕 CAFETERIA HALL' : '📚 CLASSROOMS';
+                document.getElementById('location-badge').innerText = player.position.z > 12 ? '🍕 CAFETERIA HALL' : '📚 CAMPUS ROOMS';
 
                 if (fpvWeaponGroup) {
                     if (speed > 0 && player.isGrounded) player.bobTimer += delta * 12;
@@ -781,27 +801,35 @@
                 if (player.chalkCooldown > 0) { player.chalkCooldown -= delta; if(player.chalkCooldown <= 0) document.getElementById('chalk-status').innerText = 'Chalk: READY'; }
                 for (let i = chalkProjectiles.length - 1; i >= 0; i--) {
                     const proj = chalkProjectiles[i]; proj.mesh.position.addScaledVector(proj.velocity, delta); proj.life -= delta;
-                    if (proj.life <= 0) { scene.remove(proj.mesh); chalkProjectiles.splice(i, 1); }
+                    let hit = false;
+                    if (!isMultiplayer && ai.hp > 0) {
+                        if (proj.mesh.position.distanceTo(ai.position.clone().add(new THREE.Vector3(0, 0.6, 0))) < 1.0) {
+                            ai.hp -= 15; showHitPop(proj.mesh.position, '-15'); soundFX.playHit(); hit = true; updateHUD();
+                            if (ai.hp <= 0) { ai.mesh.rotation.x = -Math.PI/2; endGame('YOU WON! CLASS REBEL DEFEATED!', true); }
+                        }
+                    } else if (isMultiplayer) {
+                        Object.keys(peerPlayers).forEach(id => {
+                            if (id !== myPlayerId && !peerPlayers[id].isSpectator) {
+                                const pPos = new THREE.Vector3(peerPlayers[id].x, peerPlayers[id].y - EYE_HEIGHT + 0.6, peerPlayers[id].z);
+                                if (proj.mesh.position.distanceTo(pPos) < 1.0) {
+                                    socket.emit('player_hit', { targetId: id, damage: 15 }); showHitPop(proj.mesh.position, '-15'); soundFX.playHit(); hit = true;
+                                }
+                            }
+                        });
+                    }
+                    if (proj.life <= 0 || hit) { scene.remove(proj.mesh); chalkProjectiles.splice(i, 1); }
                 }
 
-                if (isMultiplayer) {
-                    socket.emit('player_update', { x: player.position.x, y: player.position.y, z: player.position.z, yaw: player.yaw, pitch: player.pitch });
-                    Object.keys(peerPlayers).forEach(id => {
-                        if (id !== myPlayerId && peerMeshes[id]) {
-                            const pm = peerMeshes[id].group; const pData = peerPlayers[id];
-                            pm.position.lerp(new THREE.Vector3(pData.x, pData.y - EYE_HEIGHT, pData.z), 0.2); 
-                            pm.rotation.y = pData.yaw;
-                        }
-                    });
-                }
+                if (isMultiplayer) socket.emit('player_update', { x: player.position.x, y: player.position.y, z: player.position.z, yaw: player.yaw, pitch: player.pitch });
             }
+
             if(renderer) renderer.render(scene, camera);
         }
         
         initScene();
         bindMobileButtons();
         syncMobileControls();
-        buildDynamicMap({ classrooms: 1, cafeterias: 1 });
+        buildDynamicMap({ classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 });
         animate();
     </script>
 </body>
