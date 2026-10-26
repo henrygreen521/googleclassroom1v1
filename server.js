@@ -7,7 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
@@ -21,7 +20,6 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     let currentRoom = null;
 
-    // Create Room with Map Settings
     socket.on('create_room', ({ username, settings }) => {
         const roomCode = generateRoomCode();
         currentRoom = roomCode;
@@ -29,18 +27,14 @@ io.on('connection', (socket) => {
         rooms[roomCode] = {
             hostId: socket.id,
             started: false,
-            settings: settings || { classrooms: 1, cafeterias: 1 }, // Default fallback
+            settings: settings || { classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 }, 
             players: {}
         };
 
         rooms[roomCode].players[socket.id] = {
             id: socket.id,
             username: username || 'Host Student',
-            isHost: true,
-            hp: 100,
-            x: 0, y: 1.6, z: 4,
-            yaw: 0, pitch: 0,
-            color: '#3b82f6'
+            isHost: true, hp: 100, x: 0, y: 1.6, z: 4, yaw: 0, pitch: 0, color: '#3b82f6', isSpectator: false
         };
 
         socket.join(roomCode);
@@ -48,43 +42,49 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('lobby_update', rooms[roomCode]);
     });
 
-    // Join Room
     socket.on('join_room', ({ roomCode, username }) => {
         const room = rooms[roomCode];
-
         if (!room) return socket.emit('error_msg', 'Room code does not exist!');
-        if (room.started) return socket.emit('error_msg', 'Match is already in progress!');
 
         const colors = ['#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
         const pColor = colors[Object.keys(room.players).length % colors.length];
+        const isSpec = room.started; // Join as spectator if match already started
 
         currentRoom = roomCode;
-        room.players[socket.id] = {
+        const newPlayer = {
             id: socket.id,
             username: username || `Student_${Math.floor(Math.random() * 1000)}`,
-            isHost: false,
-            hp: 100,
-            x: (Math.random() - 0.5) * 6, y: 1.6, z: (Math.random() - 0.5) * 6,
-            yaw: 0, pitch: 0, color: pColor
+            isHost: false, hp: 100, x: 0, y: 1.6, z: 4, yaw: 0, pitch: 0, color: pColor, isSpectator: isSpec
         };
+        room.players[socket.id] = newPlayer;
 
         socket.join(roomCode);
-        // Send settings to the joining player so they generate the correct map size
-        socket.emit('room_joined', { roomCode, playerId: socket.id, settings: room.settings });
-        io.to(roomCode).emit('lobby_update', room);
+        
+        // Let the joiner know their state
+        socket.emit('room_joined', { roomCode, playerId: socket.id, settings: room.settings, isSpectator: isSpec, players: room.players });
+        
+        if (isSpec) {
+            // Tell existing players someone joined as a spectator
+            socket.to(roomCode).emit('spectator_joined', newPlayer.username);
+            // Send peer update so clients know they exist
+            socket.to(roomCode).emit('peer_update', newPlayer);
+        } else {
+            io.to(roomCode).emit('lobby_update', room);
+        }
     });
 
-    // Host Starts Match
     socket.on('start_game', () => {
         const room = rooms[currentRoom];
         if (room && room.hostId === socket.id) {
             room.started = true;
-            Object.values(room.players).forEach((player) => player.hp = 100);
+            Object.values(room.players).forEach((player) => {
+                player.hp = 100;
+                player.isSpectator = false; // Everyone plays in the new round
+            });
             io.to(currentRoom).emit('match_started', { players: room.players, settings: room.settings });
         }
     });
 
-    // 60Hz Player State Sync
     socket.on('player_update', (data) => {
         const room = rooms[currentRoom];
         if (room && room.players[socket.id]) {
@@ -93,17 +93,15 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Attack / Damage Sync
     socket.on('player_attack', (data) => { socket.to(currentRoom).emit('peer_attack', { attackerId: socket.id, ...data }); });
     socket.on('player_hit', ({ targetId, damage }) => {
         const room = rooms[currentRoom];
-        if (room && room.players[targetId]) {
+        if (room && room.players[targetId] && !room.players[targetId].isSpectator) {
             room.players[targetId].hp = Math.max(0, room.players[targetId].hp - damage);
             io.to(currentRoom).emit('player_damaged', { targetId, hp: room.players[targetId].hp, damage });
         }
     });
 
-    // Handle Disconnect
     socket.on('disconnect', () => {
         if (currentRoom && rooms[currentRoom]) {
             const room = rooms[currentRoom];
