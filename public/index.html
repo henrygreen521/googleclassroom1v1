@@ -84,8 +84,11 @@
             <div id="announcer-text" class="pixel-font text-2xl md:text-4xl text-yellow-300 text-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] transition-transform duration-300 transform scale-0">CLASS IS IN SESSION!</div>
         </div>
         <div class="self-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-md text-xs text-slate-300 pointer-events-auto text-center hidden md:block">
-            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>Push Doors Open!</b> | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
-            <div id="chalk-status" class="mt-1 font-bold text-emerald-400">Chalk: READY</div>
+            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Shift:</b> Sprint (7s/7s) | <b>Space/A:</b> Jump | <b>Push Doors Open!</b> | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
+            <div class="flex justify-center gap-4 mt-1">
+                <div id="chalk-status" class="font-bold text-emerald-400">Chalk: READY</div>
+                <div id="sprint-status" class="font-bold text-blue-400">Sprint: 100%</div>
+            </div>
         </div>
     </div>
 
@@ -231,7 +234,23 @@
         let spectatorIndex = 0; 
         
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
-        const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0, isSpectator: false };
+        const player = { 
+            position: new THREE.Vector3(0, EYE_HEIGHT, 4), 
+            velocity: new THREE.Vector3(), 
+            yaw: 0, 
+            pitch: 0, 
+            isGrounded: true, 
+            hp: 100, 
+            maxHp: 100, 
+            attackCooldown: 0, 
+            chalkCooldown: 0, 
+            bobTimer: 0, 
+            isSpectator: false,
+            sprintTimeLeft: 7.0,
+            sprintCooldownLeft: 0,
+            isSprinting: false,
+            exhausted: false
+        };
         const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, swingTimer: 0, chalkCooldown: 0, mesh: null, head: null, arm: null };
         const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], chalkProjectiles = [];
@@ -465,9 +484,9 @@
 
         function createDoor(group, lx, lz, rotY, hingeRight = false) {
             const doorPivot = new THREE.Group(); doorPivot.position.set(lx, 0, lz); doorPivot.rotation.y = rotY;
-            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
-            const offset = hingeRight ? -1.5 : 1.5; doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
-            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
+            const offset = hingeRight ? -1.0 : 1.0; doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
             group.add(doorPivot); 
             
             let angle = group.rotation.y;
@@ -518,62 +537,62 @@
             }
             edges.sort(()=>Math.random()-0.5);
             
-            const ts = 30; 
+            const ts = 20; 
             for (let key in hCells) {
                 let c = hCells[key];
                 let grp = new THREE.Group(); grp.position.set(c.x * ts, 0, c.z * ts); scene.add(grp);
                 
-                const f = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.7, color: 0xe2e8f0 }));
+                const f = new THREE.Mesh(new THREE.PlaneGeometry(ts, ts), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 4, 4), roughness: 0.7, color: 0xe2e8f0 }));
                 f.rotation.x = -Math.PI/2; f.receiveShadow = true; grp.add(f);
-                const cl = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                const cl = new THREE.Mesh(new THREE.PlaneGeometry(ts, ts), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
                 cl.position.y = 6; cl.rotation.x = Math.PI/2; grp.add(cl);
                 
-                const l = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
+                const l = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
                 l.position.y = 5.95; grp.add(l);
             }
             
             for (let edge of edges) {
                 let grp = new THREE.Group();
-                grp.position.set(edge.cx * ts + (edge.dx * 15), 0, edge.cz * ts + (edge.dz * 15));
+                grp.position.set(edge.cx * ts + (edge.dx * (ts/2)), 0, edge.cz * ts + (edge.dz * (ts/2)));
                 grp.rotation.y = edge.r;
                 scene.add(grp);
                 
                 if (roomsList.length > 0) {
                     let room = roomsList.pop();
                     if (room === 'cafe') {
-                        createWall(grp, 12, 5, 0.4, -9, 2.5, 0, 0xe2e8f0); regObs(grp, -9, 0, 6, 0.2);
-                        createWall(grp, 12, 5, 0.4, 9, 2.5, 0, 0xe2e8f0); regObs(grp, 9, 0, 6, 0.2);
-                        createWall(grp, 6, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
-                        createDoor(grp, -3.0, 0, 0, false); createDoor(grp, 3.0, 0, 0, true);
+                        createWall(grp, 8, 6, 0.4, -6, 3, 0, 0xe2e8f0); regObs(grp, -6, 0, 4, 0.2);
+                        createWall(grp, 8, 6, 0.4, 6, 3, 0, 0xe2e8f0); regObs(grp, 6, 0, 4, 0.2);
+                        createWall(grp, 4, 1.8, 0.4, 0, 5.1, 0, 0xe2e8f0);
+                        createDoor(grp, -2.0, 0, 0, false); createDoor(grp, 2.0, 0, 0, true);
                         buildCafeteria(grp);
                     } else {
-                        createWall(grp, 13.5, 5, 0.4, -8.25, 2.5, 0, 0xe2e8f0); regObs(grp, -8.25, 0, 6.75, 0.2);
-                        createWall(grp, 13.5, 5, 0.4, 8.25, 2.5, 0, 0xe2e8f0); regObs(grp, 8.25, 0, 6.75, 0.2);
-                        createWall(grp, 3, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
+                        createWall(grp, 8.5, 6, 0.4, -5.75, 3, 0, 0xe2e8f0); regObs(grp, -5.75, 0, 4.25, 0.2);
+                        createWall(grp, 8.5, 6, 0.4, 5.75, 3, 0, 0xe2e8f0); regObs(grp, 5.75, 0, 4.25, 0.2);
+                        createWall(grp, 3, 1.8, 0.4, 0, 5.1, 0, 0xe2e8f0);
                         createDoor(grp, -1.5, 0, 0, false);
                         if (room === 'class') buildClassroom(grp);
                         if (room === 'bath') buildBathroom(grp);
                         if (room === 'pc') buildComputerRoom(grp);
                     }
                 } else {
-                    createWall(grp, 30, 5, 0.4, 0, 2.5, 0, 0xe2e8f0); regObs(grp, 0, 0, 15, 0.2);
+                    createWall(grp, ts, 6, 0.4, 0, 3, 0, 0xe2e8f0); regObs(grp, 0, 0, ts/2, 0.2);
                 }
             }
         }
 
         function buildClassroom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.7, color: 0xcccccc }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.7, color: 0xcccccc }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
-            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
-            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
+            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf8fafc); regObs(grp, 0, -20, 10, 0.2);
+            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf8fafc); regObs(grp, -10, -10, 0.2, 10);
+            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf8fafc); regObs(grp, 10, -10, 0.2, 10);
             
-            const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(0, 2.8, -19.7); grp.add(board);
+            const board = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(0, 3.2, -19.7); grp.add(board);
 
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }), metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
-            const deskPositions = [ {dx: -8, dz: -6}, {dx: -3, dz: -6}, {dx: 3, dz: -6}, {dx: 8, dz: -6}, {dx: -8, dz: -13}, {dx: -3, dz: -13}, {dx: 3, dz: -13}, {dx: 8, dz: -13} ];
+            const deskPositions = [ {dx: -5, dz: -6}, {dx: 5, dz: -6}, {dx: -5, dz: -13}, {dx: 5, dz: -13} ];
             deskPositions.forEach(p => {
                 const d = new THREE.Group(); d.position.set(p.dx, 0, p.dz);
                 const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; d.add(top);
@@ -584,72 +603,72 @@
         }
 
         function buildBathroom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.2, color: 0xccddff }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.2, color: 0xccddff }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf1f5f9); regObs(grp, 0, -20, 15, 0.2);
-            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf1f5f9); regObs(grp, -15, -10, 0.2, 10);
-            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf1f5f9); regObs(grp, 15, -10, 0.2, 10);
+            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf1f5f9); regObs(grp, 0, -20, 10, 0.2);
+            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf1f5f9); regObs(grp, -10, -10, 0.2, 10);
+            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf1f5f9); regObs(grp, 10, -10, 0.2, 10);
 
-            for(let i=0; i<4; i++) {
-                let sx = -12 + (i*4);
-                createWall(grp, 0.2, 4, 4, sx, 2, -18, 0x94a3b8); regObs(grp, sx, -18, 0.1, 2);
+            for(let i=0; i<3; i++) {
+                let sx = -7 + (i*5);
+                createWall(grp, 0.2, 5, 4, sx, 2.5, -18, 0x94a3b8); regObs(grp, sx, -18, 0.1, 2);
                 const toilet = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), new THREE.MeshStandardMaterial({color:0xffffff}));
                 toilet.position.set(sx + 2, 0.5, -19); toilet.castShadow = true; grp.add(toilet); regSurf(grp, sx + 2, -19, 0.5, 0.75, 1.0);
             }
             
-            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
-            sinkBase.position.set(8, 0.5, -19); sinkBase.castShadow = true; grp.add(sinkBase); regSurf(grp, 8, -19, 4, 0.75, 1.0);
-            createWall(grp, 8, 2, 0.1, 8, 2.5, -19.7, 0x94a3b8); 
+            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
+            sinkBase.position.set(5, 0.5, -19); sinkBase.castShadow = true; grp.add(sinkBase); regSurf(grp, 5, -19, 3, 0.75, 1.0);
+            createWall(grp, 6, 2, 0.1, 5, 3, -19.7, 0x94a3b8); 
         }
 
         function buildComputerRoom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.6, color: 0x99aadd }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.6, color: 0x99aadd }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
-            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
-            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
+            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf8fafc); regObs(grp, 0, -20, 10, 0.2);
+            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf8fafc); regObs(grp, -10, -10, 0.2, 10);
+            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf8fafc); regObs(grp, 10, -10, 0.2, 10);
 
             const deskMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }), pcMat = new THREE.MeshStandardMaterial({ color: 0x111827 }), screenMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 0.5 });
             const rows = [-7, -15];
             rows.forEach(rz => {
                 const dGrp = new THREE.Group(); dGrp.position.set(0, 0, rz);
-                const table = new THREE.Mesh(new THREE.BoxGeometry(24, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; dGrp.add(table);
-                [ -11.5, 0, 11.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; dGrp.add(leg); });
+                const table = new THREE.Mesh(new THREE.BoxGeometry(16, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; dGrp.add(table);
+                [ -7.5, 0, 7.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; dGrp.add(leg); });
                 
-                for(let c=-10; c<=10; c+=5) {
+                for(let c=-6; c<=6; c+=6) {
                     const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); dGrp.add(monitor);
                     const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); dGrp.add(screen);
                     const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.15), pcMat); base.position.set(c, 1.4, -0.65); dGrp.add(base);
                 }
-                grp.add(dGrp); regSurf(grp, 0, rz, 12, 1.25, 1.2);
+                grp.add(dGrp); regSurf(grp, 0, rz, 8, 1.25, 1.2);
             });
         }
 
         function buildCafeteria(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 10, 10), roughness: 0.6, color: 0xffffee }));
-            floor.position.set(0, 0, -15); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(0, 6, -15); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.6, color: 0xffffee }));
+            floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 30, 6, 0.4, 0, 3, -30, 0xffedd5); regObs(grp, 0, -30, 15, 0.2);
-            createWall(grp, 0.4, 6, 30, -15, 3, -15, 0xffedd5); regObs(grp, -15, -15, 0.2, 15);
-            createWall(grp, 0.4, 6, 30, 15, 3, -15, 0xffedd5); regObs(grp, 15, -15, 0.2, 15);
+            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xffedd5); regObs(grp, 0, -20, 10, 0.2);
+            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xffedd5); regObs(grp, -10, -10, 0.2, 10);
+            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xffedd5); regObs(grp, 10, -10, 0.2, 10);
 
             const tMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }), bMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 });
-            for(let tx = -8; tx <= 8; tx+=16) {
-                for(let tz = -8; tz >= -22; tz-=7) {
+            for(let tx = -5; tx <= 5; tx+=10) {
+                for(let tz = -6; tz >= -16; tz-=6) {
                     const table = new THREE.Group(); table.position.set(tx, 0, tz);
-                    const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
-                    const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.45); benchA.castShadow=true; table.add(benchA);
-                    const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.45); benchB.castShadow=true; table.add(benchB);
-                    grp.add(table); regSurf(grp, tx, tz, 1.4, 1.1, 1.2);
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 2.0), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
+                    const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.35); benchA.castShadow=true; table.add(benchA);
+                    const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.35); benchB.castShadow=true; table.add(benchB);
+                    grp.add(table); regSurf(grp, tx, tz, 1.2, 1.0, 1.2);
                 }
             }
             const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); 
-            vend.position.set(10, 1.9, -28); vend.castShadow=true; grp.add(vend); regObs(grp, 10, -28, 1.1, 0.7);
+            vend.position.set(7, 1.9, -18); vend.castShadow=true; grp.add(vend); regObs(grp, 7, -18, 1.1, 0.7);
         }
 
         // --- GAMEPLAY LOGIC ---
@@ -714,6 +733,22 @@
         function updateHUD() {
             document.getElementById('p1-hp').style.width = `${(player.hp / player.maxHp) * 100}%`; document.getElementById('p1-hp-text').innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
             if (!isMultiplayer) { document.getElementById('ai-hp').style.width = `${(ai.hp / ai.maxHp) * 100}%`; document.getElementById('ai-hp-text').innerText = `${Math.ceil(ai.hp)} / ${ai.maxHp}`; }
+            
+            // Update Sprint UI Status
+            const sprintStatus = document.getElementById('sprint-status');
+            if (sprintStatus) {
+                if (player.exhausted) {
+                    sprintStatus.innerText = `Sprint: EXHAUSTED (${Math.ceil(player.sprintCooldownLeft)}s)`;
+                    sprintStatus.className = "font-bold text-red-400";
+                } else if (player.isSprinting) {
+                    sprintStatus.innerText = `Sprint: ACTIVE (${Math.ceil(player.sprintTimeLeft)}s)`;
+                    sprintStatus.className = "font-bold text-amber-400 animate-pulse";
+                } else {
+                    let pct = Math.round((player.sprintTimeLeft / 7.0) * 100);
+                    sprintStatus.innerText = `Sprint: ${pct}%`;
+                    sprintStatus.className = "font-bold text-blue-400";
+                }
+            }
         }
 
         function startMatch() {
@@ -734,7 +769,9 @@
                 document.getElementById('crosshair').classList.remove('hidden');
                 document.getElementById('spectator-ui').classList.add('hidden');
                 if (fpvWeaponGroup) fpvWeaponGroup.visible = true;
-                player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
+                player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; 
+                player.sprintTimeLeft = 7.0; player.sprintCooldownLeft = 0; player.isSprinting = false; player.exhausted = false;
+                chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
                 if (!isMultiplayer) { ai.position.set(0, 0, -4); ai.hp = 100; ai.mesh.visible = true; ai.mesh.rotation.x = 0; ai.swingTimer = 0; ai.chalkCooldown = 0; document.getElementById('ai-hp-container').classList.remove('hidden'); } else { document.getElementById('ai-hp-container').classList.add('hidden'); }
                 updateHUD(); syncMobileControls(); document.body.requestPointerLock?.();
                 const ann = document.getElementById('announcer-text'); ann.innerText = 'CLASS IS IN SESSION!'; ann.style.transform = 'scale(1)'; setTimeout(() => ann.style.transform = 'scale(0)', 1500);
@@ -807,10 +844,20 @@
         window.addEventListener('keydown', (e) => {
             if (gameState === 'SPECTATING') { if (e.code === 'Space' || e.code === 'Enter') cycleSpectator(); return; }
             keys[e.key.toLowerCase()] = true;
+            if (e.key === 'Shift') {
+                if (!player.exhausted && player.sprintTimeLeft > 0) {
+                    player.isSprinting = true;
+                }
+            }
             if (e.key.toLowerCase() === 'q' && gameState === 'PLAYING' && !e.repeat) shootChalk();
             if (e.code === 'Space' && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
         });
-        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            if (e.key === 'Shift') {
+                player.isSprinting = false;
+            }
+        });
         document.getElementById('btn-start').addEventListener('click', startMatch);
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); syncMobileControls(); });
 
@@ -819,6 +866,33 @@
             requestAnimationFrame(animate);
             const now = performance.now(); const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1); animate.lastTime = now;
             updateGamepad();
+
+            // --- SPRINT LOGIC ---
+            if (gameState === 'PLAYING') {
+                let moving = keys['w'] || keys['s'] || keys['a'] || keys['d'] || Math.abs(controllerState.moveX) > 0 || Math.abs(controllerState.moveY) > 0;
+                if (player.exhausted) {
+                    player.isSprinting = false;
+                    player.sprintCooldownLeft -= delta;
+                    if (player.sprintCooldownLeft <= 0) {
+                        player.exhausted = false;
+                        player.sprintTimeLeft = 7.0;
+                    }
+                } else if (player.isSprinting && moving) {
+                    player.sprintTimeLeft -= delta;
+                    if (player.sprintTimeLeft <= 0) {
+                        player.sprintTimeLeft = 0;
+                        player.isSprinting = false;
+                        player.exhausted = true;
+                        player.sprintCooldownLeft = 7.0;
+                    }
+                } else {
+                    // Recharge sprint when not sprinting
+                    if (player.sprintTimeLeft < 7.0) {
+                        player.sprintTimeLeft = Math.min(7.0, player.sprintTimeLeft + delta);
+                    }
+                }
+                updateHUD();
+            }
 
             if (ai.mesh && ai.mesh.visible) {
                 ai.mesh.children.forEach(c => { if(c.isSprite) { c.lookAt(camera.position); }});
@@ -867,8 +941,10 @@
                 if (Math.abs(controllerState.moveY) > 0) moveVec.z += controllerState.moveY; if (Math.abs(controllerState.moveX) > 0) moveVec.x += controllerState.moveX;
                 if (moveVec.length() > 1) moveVec.normalize();
                 
-                let speed = moveVec.length() > 0 ? 8.0 : 0;
-                let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * speed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * speed);
+                let baseSpeed = moveVec.length() > 0 ? 8.0 : 0;
+                let currentSpeed = (player.isSprinting && moveVec.length() > 0) ? baseSpeed * 1.8 : baseSpeed;
+
+                let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * currentSpeed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * currentSpeed);
                 player.position.addScaledVector(wishVel, delta); player.position.y += player.velocity.y * delta;
 
                 if (player.position.y < -10) { player.hp = 0; endGame('FELL OUT OF BOUNDS!', false); }
@@ -907,8 +983,8 @@
                 camera.position.copy(player.position); camera.rotation.set(player.pitch, player.yaw, 0);
 
                 if (fpvWeaponGroup) {
-                    if (speed > 0 && player.isGrounded) player.bobTimer += delta * 12;
-                    fpvWeaponGroup.position.y = -0.2 + Math.sin(player.bobTimer) * 0.03;
+                    if (baseSpeed > 0 && player.isGrounded) player.bobTimer += delta * (player.isSprinting ? 20 : 12);
+                    fpvWeaponGroup.position.y = -0.2 + Math.sin(player.bobTimer) * (player.isSprinting ? 0.05 : 0.03);
                     if (player.attackCooldown > 0) { player.attackCooldown -= delta; fpvWeaponGroup.rotation.x = -Math.sin((0.45 - Math.max(0, player.attackCooldown))*10); } else fpvWeaponGroup.rotation.x = 0;
                 }
 
