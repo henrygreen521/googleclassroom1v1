@@ -9,8 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Product Sans', sans-serif; user-select: none; background-color: #090d16; color: #fff; }
-        #game-canvas { width: 100vw; height: 100vh; display: block; }
+        body { margin: 0; overflow: hidden; font-family: 'Product Sans', sans-serif; user-select: none; background-color: #090d16; color: #fff; touch-action: none; }
+        #game-canvas { width: 100vw; height: 100vh; display: block; touch-action: none; }
         .pixel-font { font-family: 'Press Start 2P', monospace; }
         .hp-bar-fill { transition: width 0.12s linear; }
         .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; }
@@ -33,107 +33,12 @@
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #10b981; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(16,185,129,0.5); }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #334155; border-radius: 2px; }
 
-        .mobile-controls { position: absolute; inset: 0; z-index: 45; pointer-events: none; display: none; touch-action: none; }
-        .mobile-controls.show { display: block; }
-        .mobile-pad { position: absolute; bottom: 24px; width: 160px; height: 160px; pointer-events: auto; touch-action: none; }
-        .mobile-pad.left { left: 18px; }
-        .mobile-pad.right { right: 18px; width: 190px; height: 180px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; background: rgba(15, 23, 42, 0.12); border: 1px solid rgba(148,163,184,0.15); border-radius: 28px; }
-        .move-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px; padding: 8px; border-radius: 24px; background: rgba(15, 23, 42, 0.18); border: 1px solid rgba(148,163,184,0.2); }
-        .move-btn, .action-btn { border: 0; border-radius: 16px; background: rgba(15, 23, 42, 0.82); color: white; font-weight: 800; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; transition: transform 0.08s ease, background 0.08s ease; }
-        .move-btn:active, .move-btn.active, .action-btn:active, .action-btn.active { transform: scale(0.96); background: rgba(16, 185, 129, 0.9); }
-        .move-btn[data-key="w"] { grid-column: 2; grid-row: 1; } .move-btn[data-key="a"] { grid-column: 1; grid-row: 2; }
-        .move-btn[data-key="s"] { grid-column: 2; grid-row: 3; } .move-btn[data-key="d"] { grid-column: 3; grid-row: 2; }
-        .action-btn { min-height: 52px; font-size: 11px; padding: 8px; background: rgba(30, 41, 59, 0.9); }
-        .action-btn.jump { background: rgba(59, 130, 246, 0.9); } .action-btn.attack { background: rgba(239, 68, 68, 0.9); }
-        .action-btn.chalk { background: rgba(250, 204, 21, 0.9); color: #111827; grid-column: span 2; }
-        .look-pad { position: absolute; right: 18px; bottom: 216px; width: 150px; height: 150px; border-radius: 50%; border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(15, 23, 42, 0.18); box-shadow: inset 0 0 25px rgba(15, 23, 42, 0.25); pointer-events: auto; touch-action: none; }
-        .look-pad::before { content: "LOOK"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.18em; color: rgba(255,255,255,0.7); }
-        @media (min-width: 901px) { .mobile-controls { display: none !important; } }
-
-        /* Computer Interactive Overlay / Bezel Framing */
-        #computer-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(5, 8, 15, 0.82);
-            backdrop-filter: blur(6px);
-            z-index: 100;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.25s ease-in-out;
-        }
-        #computer-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-        .monitor-bezel {
-            position: relative;
-            background: #1e293b;
-            padding: 24px 24px 36px 24px;
-            border-radius: 18px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), inset 0 2px 4px rgba(255, 255, 255, 0.15);
-            border: 4px solid #334155;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .monitor-screen-container {
-            width: 76vw;
-            height: 72vh;
-            max-width: 950px;
-            max-height: 600px;
-            background: #000;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 3px solid #0f172a;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
-            position: relative;
-        }
-        #computer-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #000;
-        }
-        .monitor-stand-neck {
-            width: 80px;
-            height: 35px;
-            background: linear-gradient(to bottom, #334155, #1e293b);
-            margin-top: -2px;
-            border-left: 2px solid #475569;
-            border-right: 2px solid #475569;
-        }
-        .monitor-stand-base {
-            width: 220px;
-            height: 14px;
-            background: #334155;
-            border-radius: 7px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-        }
-        .monitor-power-led {
-            position: absolute;
-            bottom: 12px;
-            right: 28px;
-            width: 8px;
-            height: 8px;
-            background: #22c55e;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #22c55e;
-        }
-        .monitor-hud-hint {
-            position: absolute;
-            top: 20px;
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #facc15;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            pointer-events: none;
-        }
+        /* Mobile Controls Overlay */
+        #mobile-overlay { position: absolute; inset: 0; z-index: 45; display: none; touch-action: none; pointer-events: auto; }
+        #joystick-base { position: absolute; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; display: none; }
+        #joystick-stick { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.4); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+        #btn-jump { position: absolute; bottom: 30px; right: 30px; width: 70px; height: 70px; background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: auto; transition: background 0.1s; }
+        #btn-jump:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
     </style>
 </head>
 <body class="relative">
@@ -142,19 +47,6 @@
     <div id="crosshair" class="crosshair hidden"><div class="crosshair-line ch-h"></div><div class="crosshair-line ch-v"></div><div class="crosshair-line ch-dot"></div></div>
     <div id="hurt-overlay" class="absolute inset-0 bg-red-600/40 pointer-events-none opacity-0 z-20 transition-opacity duration-200"></div>
     <div id="toast-container"></div>
-
-    <!-- Computer Interactive Screen Overlay -->
-    <div id="computer-overlay">
-        <div class="monitor-hud-hint">🖥️ COMPUTER ACTIVE — Press <b>Backspace</b> to Exit</div>
-        <div class="monitor-bezel">
-            <div class="monitor-screen-container">
-                <iframe id="computer-iframe"></iframe>
-                <div class="monitor-power-led"></div>
-            </div>
-            <div class="monitor-stand-neck"></div>
-            <div class="monitor-stand-base"></div>
-        </div>
-    </div>
 
     <!-- Active Player UI -->
     <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-6 z-30 opacity-0 transition-opacity duration-300">
@@ -182,11 +74,8 @@
             <div id="announcer-text" class="pixel-font text-2xl md:text-4xl text-yellow-300 text-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] transition-transform duration-300 transform scale-0">CLASS IS IN SESSION!</div>
         </div>
         <div class="self-center bg-slate-900/80 px-4 py-2 rounded-full border border-slate-700 backdrop-blur-md text-xs text-slate-300 pointer-events-auto text-center hidden md:block">
-            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Shift:</b> Sprint (7s/7s) | <b>Space/A:</b> Jump | <b>Double-Click PCs:</b> Open Game | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
-            <div class="flex justify-center gap-4 mt-1">
-                <div id="chalk-status" class="font-bold text-emerald-400">Chalk: READY</div>
-                <div id="sprint-status" class="font-bold text-blue-400">Sprint: 100%</div>
-            </div>
+            <span>🎮 <b>Look:</b> Click/Right Stick | <b>WASD/Left Stick:</b> Move | <b>Space/A:</b> Jump | <b>Push Doors Open!</b> | <b>L-Click/LT:</b> Attack | <b>Q/RT:</b> Chalk</span>
+            <div id="chalk-status" class="mt-1 font-bold text-emerald-400">Chalk: READY</div>
         </div>
     </div>
 
@@ -291,11 +180,10 @@
         </div>
     </div>
 
-    <!-- Mobile Controls -->
-    <div id="mobile-controls" class="mobile-controls">
-        <div class="mobile-pad left"><div class="move-grid"><button class="move-btn" data-key="w">W</button><button class="move-btn" data-key="a">A</button><button class="move-btn" data-key="s">S</button><button class="move-btn" data-key="d">D</button></div></div>
-        <div id="mobile-look-pad" class="look-pad" aria-label="Look pad"></div>
-        <div class="mobile-pad right"><button class="action-btn jump" data-action="jump">Jump</button><button class="action-btn attack" data-action="attack">Attack</button><button class="action-btn chalk" data-action="chalk">Chalk</button></div>
+    <!-- Transparent Mobile Touch Overlay -->
+    <div id="mobile-overlay">
+        <div id="joystick-base"><div id="joystick-stick"></div></div>
+        <button id="btn-jump">JUMP</button>
     </div>
 
     <script>
@@ -305,10 +193,12 @@
         let currentMapSettings = { classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 };
         
         let userSettings = { sensitivity: 1.0, volume: 1.0, performance: false }; 
-        const mobileState = { lookPointerId: null, lastLookX: 0, lastLookY: 0, isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900 };
-        
-        let isComputerActive = false;
-        const interactiveComputers = []; // Tracks monitor mesh references for raycasting
+        const mobileState = { 
+            isTouch: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 900,
+            joyActive: false, joyId: null, joyStartX: 0, joyStartY: 0,
+            lookId: null, lookLastX: 0, lookLastY: 0,
+            touchStartTime: 0, holdTimeout: null, isDragging: false
+        };
 
         class SoundFX {
             constructor() { this.ctx = null; }
@@ -335,26 +225,11 @@
         let spectatorIndex = 0; 
         
         const GRAVITY = -24.0, JUMP_STRENGTH = 8.5, EYE_HEIGHT = 1.6, PLAYER_RADIUS = 0.45;
-        const player = { 
-            position: new THREE.Vector3(0, EYE_HEIGHT, 4), 
-            velocity: new THREE.Vector3(), 
-            yaw: 0, 
-            pitch: 0, 
-            isGrounded: true, 
-            hp: 100, 
-            maxHp: 100, 
-            attackCooldown: 0, 
-            chalkCooldown: 0, 
-            bobTimer: 0, 
-            isSpectator: false,
-            sprintTimeLeft: 7.0,
-            sprintCooldownLeft: 0,
-            isSprinting: false,
-            exhausted: false
-        };
+        const player = { position: new THREE.Vector3(0, EYE_HEIGHT, 4), velocity: new THREE.Vector3(), yaw: 0, pitch: 0, isGrounded: true, hp: 100, maxHp: 100, attackCooldown: 0, chalkCooldown: 0, bobTimer: 0, isSpectator: false };
         const controllerState = { moveX: 0, moveY: 0, prevLT: false, prevRT: false, prevA: false };
         const ai = { position: new THREE.Vector3(0, 0, -4), hp: 100, maxHp: 100, attackCooldown: 0, swingTimer: 0, chalkCooldown: 0, mesh: null, head: null, arm: null };
         const keys = {}, furnitureSurfaces = [], staticObstacles = [], doors = [], chalkProjectiles = [];
+        let worldBounds = { minX: -15, maxX: 15, minZ: -10, maxZ: 45 };
 
         // --- GLOBAL TEXTURE LOADER ---
         let textures = { floor: null, wall: null };
@@ -474,7 +349,7 @@
         socket.on('peer_shoot_chalk', (data) => {
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 }));
             mesh.position.set(data.px, data.py, data.pz); scene.add(mesh);
-            chalkProjectiles.push({ mesh, velocity: new THREE.Vector3(data.vx, data.vy, data.vz), life: 1.2, isPeer: true });
+            chalkProjectiles.push({ mesh, velocity: new THREE.Vector3(data.vx, data.vy, data.vz), life: 1.2, isPeer: true, isAI: false });
         });
 
         socket.on('player_damaged', (data) => {
@@ -585,9 +460,10 @@
 
         function createDoor(group, lx, lz, rotY, hingeRight = false) {
             const doorPivot = new THREE.Group(); doorPivot.position.set(lx, 0, lz); doorPivot.rotation.y = rotY;
-            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
-            const offset = hingeRight ? -1.0 : 1.0; doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
-            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }));
+            const offset = hingeRight ? -1.5 : 1.5; doorMesh.position.set(offset, 1.9, 0); doorMesh.castShadow = true; doorPivot.add(doorMesh);
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.8 })); 
+            glass.position.set(offset, 2.8, 0.09); doorPivot.add(glass);
             group.add(doorPivot); 
             
             let angle = group.rotation.y;
@@ -603,7 +479,7 @@
                 let isPeer = false; Object.values(peerMeshes).forEach(pm => { if (pm.group === obj) isPeer = true; }); if (isPeer) continue;
                 scene.remove(obj);
             }
-            furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0; interactiveComputers.length = 0;
+            furnitureSurfaces.length = 0; staticObstacles.length = 0; doors.length = 0;
 
             const cCount = settings.classrooms || 1; const bCount = settings.bathrooms || 0; const pCount = settings.computers || 0; const fCount = settings.cafeterias || 1;
             
@@ -638,62 +514,62 @@
             }
             edges.sort(()=>Math.random()-0.5);
             
-            const ts = 20; 
+            const ts = 30; 
             for (let key in hCells) {
                 let c = hCells[key];
                 let grp = new THREE.Group(); grp.position.set(c.x * ts, 0, c.z * ts); scene.add(grp);
                 
-                const f = new THREE.Mesh(new THREE.PlaneGeometry(ts, ts), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 4, 4), roughness: 0.7, color: 0xe2e8f0 }));
+                const f = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.7, color: 0xe2e8f0 }));
                 f.rotation.x = -Math.PI/2; f.receiveShadow = true; grp.add(f);
-                const cl = new THREE.Mesh(new THREE.PlaneGeometry(ts, ts), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                const cl = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
                 cl.position.y = 6; cl.rotation.x = Math.PI/2; grp.add(cl);
                 
-                const l = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 0.6), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
+                const l = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 0.8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
                 l.position.y = 5.95; grp.add(l);
             }
             
             for (let edge of edges) {
                 let grp = new THREE.Group();
-                grp.position.set(edge.cx * ts + (edge.dx * (ts/2)), 0, edge.cz * ts + (edge.dz * (ts/2)));
+                grp.position.set(edge.cx * ts + (edge.dx * 15), 0, edge.cz * ts + (edge.dz * 15));
                 grp.rotation.y = edge.r;
                 scene.add(grp);
                 
                 if (roomsList.length > 0) {
                     let room = roomsList.pop();
                     if (room === 'cafe') {
-                        createWall(grp, 8, 6, 0.4, -6, 3, 0, 0xe2e8f0); regObs(grp, -6, 0, 4, 0.2);
-                        createWall(grp, 8, 6, 0.4, 6, 3, 0, 0xe2e8f0); regObs(grp, 6, 0, 4, 0.2);
-                        createWall(grp, 4, 1.8, 0.4, 0, 5.1, 0, 0xe2e8f0);
-                        createDoor(grp, -2.0, 0, 0, false); createDoor(grp, 2.0, 0, 0, true);
+                        createWall(grp, 12, 5, 0.4, -9, 2.5, 0, 0xe2e8f0); regObs(grp, -9, 0, 6, 0.2);
+                        createWall(grp, 12, 5, 0.4, 9, 2.5, 0, 0xe2e8f0); regObs(grp, 9, 0, 6, 0.2);
+                        createWall(grp, 6, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
+                        createDoor(grp, -3.0, 0, 0, false); createDoor(grp, 3.0, 0, 0, true);
                         buildCafeteria(grp);
                     } else {
-                        createWall(grp, 8.5, 6, 0.4, -5.75, 3, 0, 0xe2e8f0); regObs(grp, -5.75, 0, 4.25, 0.2);
-                        createWall(grp, 8.5, 6, 0.4, 5.75, 3, 0, 0xe2e8f0); regObs(grp, 5.75, 0, 4.25, 0.2);
-                        createWall(grp, 3, 1.8, 0.4, 0, 5.1, 0, 0xe2e8f0);
+                        createWall(grp, 13.5, 5, 0.4, -8.25, 2.5, 0, 0xe2e8f0); regObs(grp, -8.25, 0, 6.75, 0.2);
+                        createWall(grp, 13.5, 5, 0.4, 8.25, 2.5, 0, 0xe2e8f0); regObs(grp, 8.25, 0, 6.75, 0.2);
+                        createWall(grp, 3, 1.2, 0.4, 0, 4.4, 0, 0xe2e8f0);
                         createDoor(grp, -1.5, 0, 0, false);
                         if (room === 'class') buildClassroom(grp);
                         if (room === 'bath') buildBathroom(grp);
                         if (room === 'pc') buildComputerRoom(grp);
                     }
                 } else {
-                    createWall(grp, ts, 6, 0.4, 0, 3, 0, 0xe2e8f0); regObs(grp, 0, 0, ts/2, 0.2);
+                    createWall(grp, 30, 5, 0.4, 0, 2.5, 0, 0xe2e8f0); regObs(grp, 0, 0, 15, 0.2);
                 }
             }
         }
 
         function buildClassroom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.7, color: 0xcccccc }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.7, color: 0xcccccc }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf8fafc); regObs(grp, 0, -20, 10, 0.2);
-            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf8fafc); regObs(grp, -10, -10, 0.2, 10);
-            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf8fafc); regObs(grp, 10, -10, 0.2, 10);
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
             
-            const board = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(0, 3.2, -19.7); grp.add(board);
+            const board = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), new THREE.MeshStandardMaterial({ map: createChalkboardTexture() })); board.position.set(0, 2.8, -19.7); grp.add(board);
 
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }), metalMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7 });
-            const deskPositions = [ {dx: -5, dz: -6}, {dx: 5, dz: -6}, {dx: -5, dz: -13}, {dx: 5, dz: -13} ];
+            const deskPositions = [ {dx: -8, dz: -6}, {dx: -3, dz: -6}, {dx: 3, dz: -6}, {dx: 8, dz: -6}, {dx: -8, dz: -13}, {dx: -3, dz: -13}, {dx: 3, dz: -13}, {dx: 8, dz: -13} ];
             deskPositions.forEach(p => {
                 const d = new THREE.Group(); d.position.set(p.dx, 0, p.dz);
                 const top = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 1.4), woodMat); top.position.y = 1.3; top.castShadow = true; d.add(top);
@@ -704,85 +580,77 @@
         }
 
         function buildBathroom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.2, color: 0xccddff }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.2, color: 0xccddff }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf1f5f9); regObs(grp, 0, -20, 10, 0.2);
-            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf1f5f9); regObs(grp, -10, -10, 0.2, 10);
-            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf1f5f9); regObs(grp, 10, -10, 0.2, 10);
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf1f5f9); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf1f5f9); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf1f5f9); regObs(grp, 15, -10, 0.2, 10);
 
-            for(let i=0; i<3; i++) {
-                let sx = -7 + (i*5);
-                createWall(grp, 0.2, 5, 4, sx, 2.5, -18, 0x94a3b8); regObs(grp, sx, -18, 0.1, 2);
+            for(let i=0; i<4; i++) {
+                let sx = -12 + (i*4);
+                createWall(grp, 0.2, 4, 4, sx, 2, -18, 0x94a3b8); regObs(grp, sx, -18, 0.1, 2);
                 const toilet = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), new THREE.MeshStandardMaterial({color:0xffffff}));
                 toilet.position.set(sx + 2, 0.5, -19); toilet.castShadow = true; grp.add(toilet); regSurf(grp, sx + 2, -19, 0.5, 0.75, 1.0);
             }
             
-            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
-            sinkBase.position.set(5, 0.5, -19); sinkBase.castShadow = true; grp.add(sinkBase); regSurf(grp, 5, -19, 3, 0.75, 1.0);
-            createWall(grp, 6, 2, 0.1, 5, 3, -19.7, 0x94a3b8); 
+            const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 1.5), new THREE.MeshStandardMaterial({color:0x475569}));
+            sinkBase.position.set(8, 0.5, -19); sinkBase.castShadow = true; grp.add(sinkBase); regSurf(grp, 8, -19, 4, 0.75, 1.0);
+            createWall(grp, 8, 2, 0.1, 8, 2.5, -19.7, 0x94a3b8); 
         }
 
         function buildComputerRoom(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.6, color: 0x99aadd }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 8, 6), roughness: 0.6, color: 0x99aadd }));
             floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: 0x0f172a })); ceil.position.set(0, 5, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xf8fafc); regObs(grp, 0, -20, 10, 0.2);
-            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xf8fafc); regObs(grp, -10, -10, 0.2, 10);
-            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xf8fafc); regObs(grp, 10, -10, 0.2, 10);
+            createWall(grp, 30, 5, 0.4, 0, 2.5, -20, 0xf8fafc); regObs(grp, 0, -20, 15, 0.2);
+            createWall(grp, 0.4, 5, 20, -15, 2.5, -10, 0xf8fafc); regObs(grp, -15, -10, 0.2, 10);
+            createWall(grp, 0.4, 5, 20, 15, 2.5, -10, 0xf8fafc); regObs(grp, 15, -10, 0.2, 10);
 
             const deskMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }), pcMat = new THREE.MeshStandardMaterial({ color: 0x111827 }), screenMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 0.5 });
             const rows = [-7, -15];
             rows.forEach(rz => {
                 const dGrp = new THREE.Group(); dGrp.position.set(0, 0, rz);
-                const table = new THREE.Mesh(new THREE.BoxGeometry(16, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; dGrp.add(table);
-                [ -7.5, 0, 7.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; dGrp.add(leg); });
+                const table = new THREE.Mesh(new THREE.BoxGeometry(24, 0.2, 2.5), deskMat); table.position.y = 1.2; table.castShadow = true; dGrp.add(table);
+                [ -11.5, 0, 11.5 ].forEach(lx => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 2.3), deskMat); leg.position.set(lx, 0.55, 0); leg.castShadow=true; dGrp.add(leg); });
                 
-                for(let c=-6; c<=6; c+=6) {
+                for(let c=-10; c<=10; c+=5) {
                     const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.1), pcMat); monitor.position.set(c, 1.7, -0.6); dGrp.add(monitor);
                     const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), screenMat); screen.position.set(c, 1.7, -0.54); dGrp.add(screen);
                     const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.15), pcMat); base.position.set(c, 1.4, -0.65); dGrp.add(base);
-
-                    // Track screen mesh for double-click computer interactions
-                    screen.userData = { isComputerScreen: true };
-                    interactiveComputers.push(screen);
-
-                    dGrp.add(monitor);
-                    dGrp.add(screen);
-                    dGrp.add(base);
                 }
-                grp.add(dGrp); regSurf(grp, 0, rz, 8, 1.25, 1.2);
+                grp.add(dGrp); regSurf(grp, 0, rz, 12, 1.25, 1.2);
             });
         }
 
         function buildCafeteria(grp) {
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 6, 6), roughness: 0.6, color: 0xffffee }));
-            floor.position.set(0, 0, -10); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(0, 6, -10); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ map: getTex('assets/floor_tile.jpg', 10, 10), roughness: 0.6, color: 0xffffee }));
+            floor.position.set(0, 0, -15); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; grp.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: 0x1e293b })); ceil.position.set(0, 6, -15); ceil.rotation.x = Math.PI / 2; grp.add(ceil);
             
-            createWall(grp, 20, 6, 0.4, 0, 3, -20, 0xffedd5); regObs(grp, 0, -20, 10, 0.2);
-            createWall(grp, 0.4, 6, 20, -10, 3, -10, 0xffedd5); regObs(grp, -10, -10, 0.2, 10);
-            createWall(grp, 0.4, 6, 20, 10, 3, -10, 0xffedd5); regObs(grp, 10, -10, 0.2, 10);
+            createWall(grp, 30, 6, 0.4, 0, 3, -30, 0xffedd5); regObs(grp, 0, -30, 15, 0.2);
+            createWall(grp, 0.4, 6, 30, -15, 3, -15, 0xffedd5); regObs(grp, -15, -15, 0.2, 15);
+            createWall(grp, 0.4, 6, 30, 15, 3, -15, 0xffedd5); regObs(grp, 15, -15, 0.2, 15);
 
             const tMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }), bMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 });
-            for(let tx = -5; tx <= 5; tx+=10) {
-                for(let tz = -6; tz >= -16; tz-=6) {
+            for(let tx = -8; tx <= 8; tx+=16) {
+                for(let tz = -8; tz >= -22; tz-=7) {
                     const table = new THREE.Group(); table.position.set(tx, 0, tz);
-                    const top = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 2.0), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
-                    const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.35); benchA.castShadow=true; table.add(benchA);
-                    const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.35); benchB.castShadow=true; table.add(benchB);
-                    grp.add(table); regSurf(grp, tx, tz, 1.2, 1.0, 1.2);
+                    const top = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.25, 2.2), tMat); top.position.y = 1.2; top.castShadow = true; table.add(top);
+                    const benchA = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchA.position.set(0, 0.82, 1.45); benchA.castShadow=true; table.add(benchA);
+                    const benchB = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 0.35), bMat); benchB.position.set(0, 0.82, -1.45); benchB.castShadow=true; table.add(benchB);
+                    grp.add(table); regSurf(grp, tx, tz, 1.4, 1.1, 1.2);
                 }
             }
             const vend = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 })); 
-            vend.position.set(7, 1.9, -18); vend.castShadow=true; grp.add(vend); regObs(grp, 7, -18, 1.1, 0.7);
+            vend.position.set(10, 1.9, -28); vend.castShadow=true; grp.add(vend); regObs(grp, 10, -28, 1.1, 0.7);
         }
 
         // --- GAMEPLAY LOGIC ---
         function updateGamepad() {
-            if (player.isSpectator || isComputerActive) return;
+            if (player.isSpectator) return;
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null; for (let i = 0; i < gamepads.length; i++) { if (gamepads[i]) { gp = gamepads[i]; break; } }
             if (!gp) { controllerState.moveX = 0; controllerState.moveY = 0; return; }
@@ -803,7 +671,7 @@
         }
 
         function triggerPlayerAttack() {
-            if (isComputerActive || player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
+            if (player.attackCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
             player.attackCooldown = 0.45; soundFX.playSwing();
             const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
             const hitPos = player.position.clone().add(new THREE.Vector3(0, 0.3, 0)).add(forward.clone().multiplyScalar(1.8));
@@ -822,7 +690,7 @@
         }
 
         function shootChalk() {
-            if (isComputerActive || player.chalkCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
+            if (player.chalkCooldown > 0 || gameState !== 'PLAYING' || player.isSpectator) return;
             player.chalkCooldown = 2.0; document.getElementById('chalk-status').innerText = 'Chalk: RECHARGING';
             const dir = new THREE.Vector3( -Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch) ).normalize();
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfde68a, emissive: 0xf59e0b, emissiveIntensity: 0.8 }));
@@ -842,21 +710,6 @@
         function updateHUD() {
             document.getElementById('p1-hp').style.width = `${(player.hp / player.maxHp) * 100}%`; document.getElementById('p1-hp-text').innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
             if (!isMultiplayer) { document.getElementById('ai-hp').style.width = `${(ai.hp / ai.maxHp) * 100}%`; document.getElementById('ai-hp-text').innerText = `${Math.ceil(ai.hp)} / ${ai.maxHp}`; }
-            
-            const sprintStatus = document.getElementById('sprint-status');
-            if (sprintStatus) {
-                if (player.exhausted) {
-                    sprintStatus.innerText = `Sprint: EXHAUSTED (${Math.ceil(player.sprintCooldownLeft)}s)`;
-                    sprintStatus.className = "font-bold text-red-400";
-                } else if (player.isSprinting) {
-                    sprintStatus.innerText = `Sprint: ACTIVE (${Math.ceil(player.sprintTimeLeft)}s)`;
-                    sprintStatus.className = "font-bold text-amber-400 animate-pulse";
-                } else {
-                    let pct = Math.round((player.sprintTimeLeft / 7.0) * 100);
-                    sprintStatus.innerText = `Sprint: ${pct}%`;
-                    sprintStatus.className = "font-bold text-blue-400";
-                }
-            }
         }
 
         function startMatch() {
@@ -877,9 +730,7 @@
                 document.getElementById('crosshair').classList.remove('hidden');
                 document.getElementById('spectator-ui').classList.add('hidden');
                 if (fpvWeaponGroup) fpvWeaponGroup.visible = true;
-                player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; 
-                player.sprintTimeLeft = 7.0; player.sprintCooldownLeft = 0; player.isSprinting = false; player.exhausted = false;
-                chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
+                player.position.set(0, EYE_HEIGHT, 4); player.hp = 100; player.chalkCooldown = 0; chalkProjectiles.forEach(p => scene.remove(p.mesh)); chalkProjectiles.length = 0; document.getElementById('chalk-status').innerText = 'Chalk: READY';
                 if (!isMultiplayer) { ai.position.set(0, 0, -4); ai.hp = 100; ai.mesh.visible = true; ai.mesh.rotation.x = 0; ai.swingTimer = 0; ai.chalkCooldown = 0; document.getElementById('ai-hp-container').classList.remove('hidden'); } else { document.getElementById('ai-hp-container').classList.add('hidden'); }
                 updateHUD(); syncMobileControls(); document.body.requestPointerLock?.();
                 const ann = document.getElementById('announcer-text'); ann.innerText = 'CLASS IS IN SESSION!'; ann.style.transform = 'scale(1)'; setTimeout(() => ann.style.transform = 'scale(0)', 1500);
@@ -899,42 +750,105 @@
             setTimeout(() => { document.getElementById('main-menu').classList.remove('hidden'); document.getElementById('crosshair').classList.add('hidden'); document.getElementById('spectator-ui').classList.add('hidden'); syncMobileControls(); }, 3000);
         }
 
-        // --- MOBILE CONTROLS & EVENTS ---
+        // --- NEW MOBILE CONTROLS & EVENTS ---
         function syncMobileControls() {
-            const c = document.getElementById('mobile-controls');
-            if (c) c.classList.toggle('show', mobileState.isTouch && gameState === 'PLAYING' && !isComputerActive);
+            const overlay = document.getElementById('mobile-overlay');
+            if (overlay) overlay.style.display = (mobileState.isTouch && (gameState === 'PLAYING' || gameState === 'SPECTATING')) ? 'block' : 'none';
         }
 
-        function bindMobileButtons() {
-            document.querySelectorAll('.move-btn').forEach(btn => {
-                const k = btn.dataset.key; const p = (isP) => { keys[k] = isP; btn.classList.toggle('active', isP); };
-                btn.addEventListener('pointerdown', (e) => { e.preventDefault(); p(true); });
-                ['pointerup','pointerleave','pointercancel'].forEach(ev => btn.addEventListener(ev, () => p(false)));
-            });
-            document.querySelectorAll('.action-btn').forEach(btn => {
-                const act = btn.dataset.action;
-                btn.addEventListener('pointerdown', (e) => {
-                    e.preventDefault(); btn.classList.add('active');
-                    if(act === 'attack') triggerPlayerAttack();
-                    if(act === 'jump' && player.isGrounded) { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
-                    if(act === 'chalk') shootChalk();
-                });
-                ['pointerup','pointerleave','pointercancel'].forEach(ev => btn.addEventListener(ev, () => btn.classList.remove('active')));
-            });
+        function setupTouchControls() {
+            const overlay = document.getElementById('mobile-overlay');
+            const joyBase = document.getElementById('joystick-base');
+            const joyStick = document.getElementById('joystick-stick');
+            
+            overlay.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (gameState === 'SPECTATING') {
+                        cycleSpectator();
+                        return;
+                    }
+                    if (t.clientX < window.innerWidth / 2 && !mobileState.joyActive) {
+                        mobileState.joyActive = true;
+                        mobileState.joyId = t.identifier;
+                        mobileState.joyStartX = t.clientX;
+                        mobileState.joyStartY = t.clientY;
+                        joyBase.style.display = 'block';
+                        joyBase.style.left = t.clientX + 'px';
+                        joyBase.style.top = t.clientY + 'px';
+                        joyStick.style.transform = `translate(-50%, -50%) translate(0px, 0px)`;
+                    } else if (t.clientX >= window.innerWidth / 2 && mobileState.lookId === null) {
+                        mobileState.lookId = t.identifier;
+                        mobileState.lookLastX = t.clientX;
+                        mobileState.lookLastY = t.clientY;
+                        mobileState.isDragging = false;
+                        mobileState.touchStartTime = Date.now();
+                        mobileState.holdTimeout = setTimeout(() => {
+                            if (!mobileState.isDragging) shootChalk();
+                        }, 400);
+                    }
+                }
+            }, {passive: false});
 
-            const lpad = document.getElementById('mobile-look-pad');
-            if(lpad) {
-                lpad.addEventListener('pointerdown', (e) => {
-                    if (gameState !== 'PLAYING' || isComputerActive) return; mobileState.lookPointerId = e.pointerId; mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY; lpad.classList.add('active');
-                });
-                lpad.addEventListener('pointermove', (e) => {
-                    if (mobileState.lookPointerId !== e.pointerId || gameState !== 'PLAYING' || isComputerActive) return;
-                    player.yaw -= (e.clientX - mobileState.lastLookX) * 0.0035 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.clientY - mobileState.lastLookY) * 0.0035 * userSettings.sensitivity));
-                    mobileState.lastLookX = e.clientX; mobileState.lastLookY = e.clientY;
-                });
-                const elook = (e) => { if (mobileState.lookPointerId === e.pointerId) { mobileState.lookPointerId = null; lpad.classList.remove('active'); } };
-                ['pointerup','pointercancel','pointerleave'].forEach(ev => lpad.addEventListener(ev, elook));
-            }
+            overlay.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === mobileState.joyId) {
+                        let dx = t.clientX - mobileState.joyStartX;
+                        let dy = t.clientY - mobileState.joyStartY;
+                        const dist = Math.hypot(dx, dy);
+                        const maxR = 40;
+                        if (dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
+                        joyStick.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
+                        controllerState.moveX = dx / maxR;
+                        controllerState.moveY = dy / maxR;
+                    } else if (t.identifier === mobileState.lookId) {
+                        let dx = t.clientX - mobileState.lookLastX;
+                        let dy = t.clientY - mobileState.lookLastY;
+                        if (Math.hypot(t.clientX - (mobileState.lookLastX - dx), t.clientY - (mobileState.lookLastY - dy)) > 10) {
+                            mobileState.isDragging = true;
+                            clearTimeout(mobileState.holdTimeout);
+                        }
+                        player.yaw -= dx * 0.0035 * userSettings.sensitivity;
+                        player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - dy * 0.0035 * userSettings.sensitivity));
+                        mobileState.lookLastX = t.clientX;
+                        mobileState.lookLastY = t.clientY;
+                    }
+                }
+            }, {passive: false});
+
+            const handleTouchEnd = (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    if (t.identifier === mobileState.joyId) {
+                        mobileState.joyActive = false; mobileState.joyId = null;
+                        joyBase.style.display = 'none';
+                        controllerState.moveX = 0; controllerState.moveY = 0;
+                    } else if (t.identifier === mobileState.lookId) {
+                        clearTimeout(mobileState.holdTimeout);
+                        if (!mobileState.isDragging && Date.now() - mobileState.touchStartTime < 300) {
+                            triggerPlayerAttack();
+                        }
+                        mobileState.lookId = null;
+                    }
+                }
+            };
+            overlay.addEventListener('touchend', handleTouchEnd, {passive: false});
+            overlay.addEventListener('touchcancel', handleTouchEnd, {passive: false});
+
+            const jumpBtn = document.getElementById('btn-jump');
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
+            });
+        }
+        
+        function bindMobileButtons() {
+            // Replaced entirely by setupTouchControls
+            setupTouchControls();
         }
 
         function cycleSpectator() {
@@ -943,177 +857,20 @@
             if (validTargets.length > 0) spectatorIndex = (spectatorIndex + 1) % validTargets.length;
         }
 
-        // --- COMPUTER INTERACTION DOUBLE-CLICK RAYCASTER ---
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-
-        window.addEventListener('dblclick', (e) => {
-            if (gameState !== 'PLAYING' || isComputerActive) return;
-
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
-
-            const intersects = raycaster.intersectObjects(interactiveComputers, false);
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-                const distance = player.position.distanceTo(hit.point);
-                // Check if player is close enough to interact (within 4 units)
-                if (distance <= 4.0) {
-                    openComputerTerminal();
-                } else {
-                    showToast("🖥️ Get closer to the computer to use it!");
-                }
-            }
+        document.addEventListener('click', (e) => { 
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            if (gameState === 'SPECTATING' && !mobileState.isTouch) cycleSpectator();
+            else if (gameState==='PLAYING' && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); 
         });
-
-        const flashGameHtmlTemplate = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="x-ua-compatible" content="ie=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>really cool flash game</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      overflow: hidden;
-      height: 100%;
-      width: 100%;
-    }
-    #flash-container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: black;
-      overflow: hidden;
-    }
-    .black-box {
-      position: fixed;
-      background: black;
-      z-index: 10;
-    }
-    #box-top { top: 0; left: 0; width: 100%; height: 0; }
-    #box-bottom { bottom: 0; left: 0; width: 100%; height: 0; }
-    #box-left { top: 0; left: 0; width: 0; height: 100%; }
-    #box-right { top: 0; right: 0; width: 0; height: 100%; }
-    ruffle-player {
-      width: 100%;
-      height: 100%;
-      background: black;
-      display: block;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.2.0-nightly.2025.10.2/ruffle.min.js"><\/script>
-</head>
-<body>
-  <div id="flash-container"></div>
-  <div class="black-box" id="box-top"></div>
-  <div class="black-box" id="box-bottom"></div>
-  <div class="black-box" id="box-left"></div>
-  <div class="black-box" id="box-right"></div>
-  <script>
-    const container = document.getElementById("flash-container");
-    const boxTop = document.getElementById("box-top");
-    const boxBottom = document.getElementById("box-bottom");
-    const boxLeft = document.getElementById("box-left");
-    const boxRight = document.getElementById("box-right");
-    function resizeGame() {
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-      const aspectRatio = 5.5 / 3;
-      let width = Math.floor(windowWidth * 1);
-      let height = Math.floor(width / aspectRatio);
-      if (height > windowHeight * 1) {
-        height = Math.floor(windowHeight * 1);
-        width = Math.floor(height * aspectRatio);
-      }
-      container.style.width = \`\${width}px\`;
-      container.style.height = \`\${height}px\`;
-      const topMargin = (windowHeight - height) / 2;
-      const leftMargin = (windowWidth - width) / 2;
-      boxTop.style.height = \`\${topMargin}px\`;
-      boxBottom.style.height = \`\${topMargin}px\`;
-      boxLeft.style.width = \`\${leftMargin}px\`;
-      boxRight.style.width = \`\${leftMargin}px\`;
-    }
-    window.addEventListener("resize", resizeGame);
-    window.addEventListener("DOMContentLoaded", () => {
-      resizeGame();
-      const ruffle = window.RufflePlayer?.newest() || window.RufflePlayer?.createPlayer();
-      if (ruffle && container) {
-        const player = ruffle.createPlayer();
-        player.style.width = "100%";
-        player.style.height = "100%";
-        player.style.background = "black";
-        container.appendChild(player);
-        player.load("https://cdn.jsdelivr.net/gh/RobiFet/CMinterview@a4017231eca9f2173ad7ec0e63b01e4786b4ad6b/web/src/BiWrath.swf");
-      } else {
-        container.textContent = "Ruffle failed to load.";
-      }
-    });
-  <\/script>
-</body>
-</html>`;
-
-        function openComputerTerminal() {
-            isComputerActive = true;
-            document.body.exitPointerLock?.();
-            const overlay = document.getElementById('computer-overlay');
-            const iframe = document.getElementById('computer-iframe');
-            
-            // Inject user-provided HTML into the iframe via srcdoc
-            iframe.srcdoc = flashGameHtmlTemplate;
-            overlay.classList.add('active');
-            syncMobileControls();
-        }
-
-        function closeComputerTerminal() {
-            if (!isComputerActive) return;
-            isComputerActive = false;
-            const overlay = document.getElementById('computer-overlay');
-            const iframe = document.getElementById('computer-iframe');
-            overlay.classList.remove('active');
-            iframe.srcdoc = ""; // Clear content
-            syncMobileControls();
-            if (!mobileState.isTouch) document.body.requestPointerLock?.();
-        }
-
-        document.addEventListener('click', () => { 
-            if (gameState === 'SPECTATING') cycleSpectator();
-            else if (gameState==='PLAYING' && !isComputerActive && document.pointerLockElement!==document.body && !mobileState.isTouch) document.body.requestPointerLock(); 
-        });
-        document.addEventListener('mousemove', (e) => { if (!isComputerActive && document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); } });
-        document.addEventListener('mousedown', (e) => { if(!isComputerActive && document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
-        
+        document.addEventListener('mousemove', (e) => { if (document.pointerLockElement===document.body && gameState==='PLAYING') { player.yaw -= e.movementX * 0.0022 * userSettings.sensitivity; player.pitch = Math.max(-1.5, Math.min(1.5, player.pitch - (e.movementY * 0.0018 * userSettings.sensitivity))); } });
+        document.addEventListener('mousedown', (e) => { if(document.pointerLockElement===document.body && e.button===0) triggerPlayerAttack(); });
         window.addEventListener('keydown', (e) => {
-            if (isComputerActive) {
-                if (e.code === 'Backspace') {
-                    e.preventDefault();
-                    closeComputerTerminal();
-                }
-                return;
-            }
-
             if (gameState === 'SPECTATING') { if (e.code === 'Space' || e.code === 'Enter') cycleSpectator(); return; }
             keys[e.key.toLowerCase()] = true;
-            if (e.key === 'Shift') {
-                if (!player.exhausted && player.sprintTimeLeft > 0) {
-                    player.isSprinting = true;
-                }
-            }
             if (e.key.toLowerCase() === 'q' && gameState === 'PLAYING' && !e.repeat) shootChalk();
             if (e.code === 'Space' && player.isGrounded && gameState === 'PLAYING') { player.velocity.y = JUMP_STRENGTH; player.isGrounded = false; soundFX.playJump(); }
         });
-        window.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-            if (e.key === 'Shift') {
-                player.isSprinting = false;
-            }
-        });
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
         document.getElementById('btn-start').addEventListener('click', startMatch);
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); syncMobileControls(); });
 
@@ -1123,32 +880,7 @@
             const now = performance.now(); const delta = Math.min((now - (animate.lastTime || now)) / 1000, 0.1); animate.lastTime = now;
             updateGamepad();
 
-            // --- SPRINT LOGIC ---
-            if (gameState === 'PLAYING' && !isComputerActive) {
-                let moving = keys['w'] || keys['s'] || keys['a'] || keys['d'] || Math.abs(controllerState.moveX) > 0 || Math.abs(controllerState.moveY) > 0;
-                if (player.exhausted) {
-                    player.isSprinting = false;
-                    player.sprintCooldownLeft -= delta;
-                    if (player.sprintCooldownLeft <= 0) {
-                        player.exhausted = false;
-                        player.sprintTimeLeft = 7.0;
-                    }
-                } else if (player.isSprinting && moving) {
-                    player.sprintTimeLeft -= delta;
-                    if (player.sprintTimeLeft <= 0) {
-                        player.sprintTimeLeft = 0;
-                        player.isSprinting = false;
-                        player.exhausted = true;
-                        player.sprintCooldownLeft = 7.0;
-                    }
-                } else {
-                    if (player.sprintTimeLeft < 7.0) {
-                        player.sprintTimeLeft = Math.min(7.0, player.sprintTimeLeft + delta);
-                    }
-                }
-                updateHUD();
-            }
-
+            // Name Tag Billboarding
             if (ai.mesh && ai.mesh.visible) {
                 ai.mesh.children.forEach(c => { if(c.isSprite) { c.lookAt(camera.position); }});
             }
@@ -1179,7 +911,7 @@
                     camera.rotation.set(-0.2, 0, 0);
                 }
             } 
-            else if (gameState === 'PLAYING' && !isComputerActive) {
+            else if (gameState === 'PLAYING') {
                 
                 doors.forEach(d => { 
                     let distP = Math.hypot(player.position.x - d.worldX, player.position.z - d.worldZ);
@@ -1196,10 +928,8 @@
                 if (Math.abs(controllerState.moveY) > 0) moveVec.z += controllerState.moveY; if (Math.abs(controllerState.moveX) > 0) moveVec.x += controllerState.moveX;
                 if (moveVec.length() > 1) moveVec.normalize();
                 
-                let baseSpeed = moveVec.length() > 0 ? 8.0 : 0;
-                let currentSpeed = (player.isSprinting && moveVec.length() > 0) ? baseSpeed * 1.8 : baseSpeed;
-
-                let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * currentSpeed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * currentSpeed);
+                let speed = moveVec.length() > 0 ? 8.0 : 0;
+                let wishVel = new THREE.Vector3().addScaledVector(new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)), -moveVec.z * speed).addScaledVector(new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)), moveVec.x * speed);
                 player.position.addScaledVector(wishVel, delta); player.position.y += player.velocity.y * delta;
 
                 if (player.position.y < -10) { player.hp = 0; endGame('FELL OUT OF BOUNDS!', false); }
@@ -1238,8 +968,8 @@
                 camera.position.copy(player.position); camera.rotation.set(player.pitch, player.yaw, 0);
 
                 if (fpvWeaponGroup) {
-                    if (baseSpeed > 0 && player.isGrounded) player.bobTimer += delta * (player.isSprinting ? 20 : 12);
-                    fpvWeaponGroup.position.y = -0.2 + Math.sin(player.bobTimer) * (player.isSprinting ? 0.05 : 0.03);
+                    if (speed > 0 && player.isGrounded) player.bobTimer += delta * 12;
+                    fpvWeaponGroup.position.y = -0.2 + Math.sin(player.bobTimer) * 0.03;
                     if (player.attackCooldown > 0) { player.attackCooldown -= delta; fpvWeaponGroup.rotation.x = -Math.sin((0.45 - Math.max(0, player.attackCooldown))*10); } else fpvWeaponGroup.rotation.x = 0;
                 }
 
@@ -1334,6 +1064,8 @@
         }
         
         initScene();
+        bindMobileButtons();
+        syncMobileControls();
         buildDynamicMap({ classrooms: 1, bathrooms: 1, computers: 1, cafeterias: 1 });
         animate();
     </script>
